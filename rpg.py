@@ -8,6 +8,7 @@
 import json
 import os
 import random
+import shutil
 import sys
 import time
 import unicodedata
@@ -145,18 +146,40 @@ def input_with_prefill(prompt, prefill=""):
     old_settings = termios.tcgetattr(fd)
     buf = list(prefill)
     pos = len(buf)
+    cursor_row = 0  # カーソルがプロンプト起点から何行下にあるか
 
     def redraw():
+        nonlocal cursor_row
+        term_width = shutil.get_terminal_size().columns
+
         before = ''.join(buf[:pos])
         after = ''.join(buf[pos:])
-        sys.stdout.write('\r\x1b[K' + prompt + before + after)
-        after_w = display_width(after)
-        if after_w > 0:
-            sys.stdout.write(f'\x1b[{after_w}D')
+        full = prompt + before + after
+
+        prompt_before_w = display_width(prompt + before)
+        full_w = display_width(full)
+
+        # カーソルをプロンプト行の先頭まで戻す
+        if cursor_row > 0:
+            sys.stdout.write(f'\x1b[{cursor_row}A')
+        sys.stdout.write('\r\x1b[J')  # 行頭へ移動 + 画面末まで消去
+        sys.stdout.write(full)
+
+        # カーソルを pos の位置に戻す（終端 → pos）
+        new_cursor_row = prompt_before_w // term_width
+        end_cursor_row = full_w // term_width
+        rows_up = end_cursor_row - new_cursor_row
+        if rows_up > 0:
+            sys.stdout.write(f'\x1b[{rows_up}A')
+        target_col = prompt_before_w % term_width
+        sys.stdout.write('\r')
+        if target_col > 0:
+            sys.stdout.write(f'\x1b[{target_col}C')
+
+        cursor_row = new_cursor_row
         sys.stdout.flush()
 
-    sys.stdout.write(prompt + prefill)
-    sys.stdout.flush()
+    redraw()  # 初期描画
 
     try:
         tty.setcbreak(fd)
@@ -176,15 +199,11 @@ def input_with_prefill(prompt, prefill=""):
                 if b1 == '[':
                     b2 = read_char(fd)
                     if b2 == 'C' and pos < len(buf):  # →
-                        w = display_width(buf[pos])
                         pos += 1
-                        sys.stdout.write(f'\x1b[{w}C')
-                        sys.stdout.flush()
+                        redraw()
                     elif b2 == 'D' and pos > 0:  # ←
                         pos -= 1
-                        w = display_width(buf[pos])
-                        sys.stdout.write(f'\x1b[{w}D')
-                        sys.stdout.flush()
+                        redraw()
                     elif b2 == '3':  # Delete キー (ESC[3~)
                         read_char(fd)  # ~ を読み捨て
                         if pos < len(buf):
