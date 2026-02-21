@@ -280,7 +280,7 @@ def get_current_date():
     )
     return result.stdout.strip()
 
-def tprint(text='', delay=0.03, end='\n'):
+def tprint(text='', delay=0.02, end='\n'):
     """タイプライター風テキスト表示"""
     for char in str(text):
         sys.stdout.write(char)
@@ -457,6 +457,7 @@ def battle():
     remaining = len(data["field_state"]["session_encounters"])
     victories = data["field_state"]["session_victories"]
 
+    os.system('cls' if os.name == 'nt' else 'clear')
     print()
     print("=" * 48)
     tprint("⚔️  モンスターが現れた！")
