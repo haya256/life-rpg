@@ -7,7 +7,7 @@
 
 ## 動作環境
 
-- **OS**: macOS / Linux（`termios` を使用するため Windows 非対応）
+- **OS**: macOS / Linux / Windows
 - **Python**: 3.6 以上
 - **外部ライブラリ**: 不要（標準ライブラリのみ）
 

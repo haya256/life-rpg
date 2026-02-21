@@ -8,14 +8,21 @@
 import json
 import os
 import random
-import select
 import sys
-import termios
 import time
-import tty
 import unicodedata
 from datetime import datetime
 from pathlib import Path
+
+_IS_WINDOWS = sys.platform == 'win32'
+
+if _IS_WINDOWS:
+    import msvcrt
+    os.system('')  # ANSI エスケープコードを有効化
+else:
+    import select
+    import termios
+    import tty
 
 # ファイルパス
 SCRIPT_DIR = Path(__file__).parent
@@ -30,6 +37,14 @@ god_mode = False
 
 def getch():
     """1文字キー入力を受け取る（Enter不要）。Ctrl+C で KeyboardInterrupt を発生。"""
+    if _IS_WINDOWS:
+        ch = msvcrt.getwch()
+        if ch == '\x03':
+            raise KeyboardInterrupt
+        if ch in ('\x00', '\xe0'):  # 特殊キー（矢印キーなど）は読み捨て
+            msvcrt.getwch()
+            return ''
+        return ch
     if not sys.stdin.isatty():
         # 非インタラクティブ環境（パイプなど）ではフォールバック
         line = input()
@@ -48,14 +63,31 @@ def getch():
 
 def animated_getch():
     """アニメーション付き1キー入力待ち（メニュー用）"""
+    frames = ["▶   ", "▶.  ", "▶.. ", "▶..."]
+    frame_idx = 0
+
+    if _IS_WINDOWS:
+        while True:
+            sys.stdout.write(f"\r{frames[frame_idx]}")
+            sys.stdout.flush()
+            if msvcrt.kbhit():
+                ch = msvcrt.getwch()
+                sys.stdout.write("\r▶  ")
+                sys.stdout.flush()
+                if ch == '\x03':
+                    raise KeyboardInterrupt
+                if ch in ('\x00', '\xe0'):  # 特殊キーは読み捨て
+                    msvcrt.getwch()
+                    continue
+                return ch
+            frame_idx = (frame_idx + 1) % len(frames)
+            time.sleep(0.4)
+
     if not sys.stdin.isatty():
         sys.stdout.write("▶  ")
         sys.stdout.flush()
         line = input()
         return line[0] if line else '\r'
-
-    frames = ["▶   ", "▶.  ", "▶.. ", "▶..."]
-    frame_idx = 0
 
     fd = sys.stdin.fileno()
     old_settings = termios.tcgetattr(fd)
@@ -83,8 +115,11 @@ def animated_getch():
 
 def input_with_prefill(prompt, prefill=""):
     """既存のテキストを初期値として表示し、カーソルキーで編集できる入力欄を提供する"""
-    if not sys.stdin.isatty():
-        return input(prompt)
+    if _IS_WINDOWS or not sys.stdin.isatty():
+        # Windows: シンプルな入力（空Enterで元の値を維持）
+        print(f"{prompt}[現在: {prefill}]")
+        new_val = input("新しい値 (Enterで変更なし): ").strip()
+        return new_val if new_val else prefill
 
     def display_width(s):
         """文字列のターミナル表示幅（全角文字は2）"""
