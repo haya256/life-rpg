@@ -896,15 +896,23 @@ def rename_monster():
     tprint(f"   {old_name}  →  {new_name}")
     print()
 
-def set_monster_rate():
+def _offer_rate_change(encounter):
+    """神モード：戦闘後に出現率変更を提案する"""
+    print()
+    ans = input(f"⚖️  [{encounter['monster']}] の出現率を変更しますか？ (y/N): ").strip().lower()
+    if ans == "y":
+        set_monster_rate(encounter=encounter)
+        input("\n[Enter] で続ける...")
+
+def set_monster_rate(encounter=None):
     """神モード専用：現在のモンスターの出現率を設定する"""
     data = load_data()
 
-    if not data["field_state"]["current_encounter"]:
-        print("❌ 現在エンカウント中ではありません。")
-        return
-
-    encounter = data["field_state"]["current_encounter"]
+    if encounter is None:
+        if not data["field_state"]["current_encounter"]:
+            print("❌ 現在エンカウント中ではありません。")
+            return
+        encounter = data["field_state"]["current_encounter"]
 
     # 現在の weight を取得
     current_weight = 0
@@ -1705,10 +1713,16 @@ def interactive_field_explore():
             ])
 
             if choice == "victory":
+                last_encounter = data["field_state"]["current_encounter"].copy()
                 victory()
                 input("\n[Enter] で続ける...")
+                if god_mode:
+                    _offer_rate_change(last_encounter)
             elif choice == "flee":
+                last_encounter = data["field_state"]["current_encounter"].copy()
                 flee()
+                if god_mode:
+                    _offer_rate_change(last_encounter)
             elif choice == "seal":
                 seal()
                 input("\n[Enter] で続ける...")
