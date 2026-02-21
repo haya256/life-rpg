@@ -1,0 +1,115 @@
+{
+  "field_tasks": {
+    "🏠 部屋の整理": [
+      {"active": 1, "monster": "テーブルの上のものを1つ片付ける"},
+      {"active": 1, "monster": "床に落ちているものを拾って定位置に戻す"},
+      {"active": 1, "monster": "ブラウザのタブを1つ閉じる"},
+      {"active": 1, "monster": "テーブルの上のものを1つ片付ける"}
+    ],
+    "📚 学習": [
+      {"active": 1, "monster": "外国語の単語を１つ学ぶ"},
+      {"active": 1, "monster": "本を5分読む"},
+      {"active": 1, "monster": "問題集の問題を1つ解く"}
+    ],
+    "💪 健康": [
+      {"active": 1, "monster": "ヨガのダウンドッグを1回やる"},
+      {"active": 1, "monster": "スクワットを10回する"},
+      {"active": 1, "monster": "ダンベルカールを10回する"}
+    ]
+  },
+  "quests": [
+    {
+      "id": "3",
+      "title": "Python 3 エンジニア認定基礎試験に合格する",
+      "missions": [
+        {
+          "description": "試験ご紹介動画( https://www.youtube.com/watch?v=zBIWDs0PLeg )を見る",
+          "completed": true
+        },
+        {
+          "description": "試験の概要を調べる（出題範囲・合格基準・受験料）",
+          "completed": true
+        },
+        {
+          "description": "主教材「Pythonチュートリアル 第4版」を入手する",
+          "completed": false
+        },
+        {
+          "description": "受験日を決めてテストセンターに申し込む",
+          "completed": false
+        },
+        {
+          "description": "3章「気楽な入門編」を読んで手を動かす",
+          "completed": false
+        },
+        {
+          "description": "4章「制御構造ツール」を読んで手を動かす（★最重要22.5%）",
+          "completed": false
+        },
+        {
+          "description": "5章「データ構造」を読んで手を動かす（★17.5%）",
+          "completed": false
+        },
+        {
+          "description": "8章「エラーと例外」を読んで手を動かす（★10%）",
+          "completed": false
+        },
+        {
+          "description": "重点4章の模擬問題を解く（1回目）",
+          "completed": false
+        },
+        {
+          "description": "6章「モジュール」を読む",
+          "completed": false
+        },
+        {
+          "description": "9章「クラス」を読む",
+          "completed": false
+        },
+        {
+          "description": "10章「標準ライブラリめぐり」を読む",
+          "completed": false
+        },
+        {
+          "description": "残りの章（1,2,7,11,12,14章）をざっと読む",
+          "completed": false
+        },
+        {
+          "description": "模擬試験を通しで解く（2回目）",
+          "completed": false
+        },
+        {
+          "description": "弱点の章を復習する",
+          "completed": false
+        },
+        {
+          "description": "模擬試験を解く（3回目・最終確認）",
+          "completed": false
+        },
+        {
+          "description": "受験する",
+          "completed": false
+        }
+      ],
+      "current_mission": 0,
+      "created": "2026-02-17",
+      "status": "active"
+    }
+  ],
+  "chests": [],
+  "hero": {
+    "level": 1,
+    "exp": 0,
+    "gold": 0,
+    "total_battles": 0,
+    "total_victories": 0,
+    "quests_completed": 0
+  },
+  "field_state": {
+    "exploring": false,
+    "current_encounter": null,
+    "current_category": null,
+    "session_encounters": [],
+    "session_victories": 0
+  }
+}

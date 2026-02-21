@@ -22,12 +22,8 @@ SCRIPT_DIR = Path(__file__).parent
 SAVE_DIR = SCRIPT_DIR / "savedata"
 SAVE_DIR.mkdir(exist_ok=True)  # 初回起動時に自動作成
 DATA_FILE = SAVE_DIR / "rpg_data.json"
+SAMPLE_DATA_FILE = SCRIPT_DIR / "sample_data.json"
 LOG_FILE = SAVE_DIR / "ADVENTURE_LOG.md"
-
-# 既存ファイルからのマイグレーション用
-GOMA_TASKS_FILE = SAVE_DIR / "goma_tasks.json"
-GOMA_STATE_FILE = SAVE_DIR / ".goma_state.json"
-COMPLETED_FILE = SAVE_DIR / "COMPLETED.md"
 
 # 神モード（デバッグモード）- セッション内のみ有効
 god_mode = False
@@ -260,7 +256,7 @@ def tprint(text='', delay=0.03, end='\n'):
 
 
 def load_data():
-    """RPGデータを読み込み（既存データからの自動マイグレーション対応）"""
+    """RPGデータを読み込む"""
     if DATA_FILE.exists():
         with open(DATA_FILE, 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -270,7 +266,7 @@ def load_data():
             data["hero"]["gold"] = 0
         return data
 
-    # 既存データからマイグレーション
+    # 初回起動：サンプルデータで初期化
     data = {
         "field_tasks": {},
         "quests": [],
@@ -292,30 +288,11 @@ def load_data():
         }
     }
 
-    # ゴマタスクからフィールドタスクへマイグレーション
-    if GOMA_TASKS_FILE.exists():
-        with open(GOMA_TASKS_FILE, 'r', encoding='utf-8') as f:
-            goma_data = json.load(f)
-            # カテゴリ名をRPG風に変換
-            for category, tasks in goma_data.items():
-                field_name = f"🌱 {category}"
-                data["field_tasks"][field_name] = []
-                for task_obj in tasks:
-                    if isinstance(task_obj, str):
-                        task_obj = {"active": 1, "task": task_obj}
-                    data["field_tasks"][field_name].append({
-                        "active": task_obj.get("active", 1),
-                        "monster": task_obj.get("task", "")
-                    })
-
-    # 完了ログから経験値を計算
-    if COMPLETED_FILE.exists():
-        with open(COMPLETED_FILE, 'r', encoding='utf-8') as f:
-            content = f.read()
-            victories = content.count(" ✓")
-            data["hero"]["total_victories"] = victories
-            data["hero"]["exp"] = victories * 10  # 1勝利 = 10 EXP
-            data["hero"]["level"] = 1 + (victories // 10)  # 10勝利で1レベルアップ
+    if SAMPLE_DATA_FILE.exists():
+        with open(SAMPLE_DATA_FILE, 'r', encoding='utf-8') as f:
+            sample = json.load(f)
+        data["field_tasks"] = sample.get("field_tasks", {})
+        data["quests"] = sample.get("quests", [])
 
     save_data(data)
     return data
