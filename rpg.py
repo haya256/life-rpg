@@ -998,13 +998,13 @@ def list_quests():
     print("=" * 48)
 
     for quest in data["quests"]:
-        total_missions = len(quest["missions"])
-        completed_missions = sum(1 for m in quest["missions"] if m["completed"])
+        total_checkpoints = len(quest["checkpoints"])
+        completed_checkpoints = sum(1 for m in quest["checkpoints"] if m["completed"])
         status_icon = "✅" if quest["status"] == "completed" else "📝"
 
         print()
         print(f"{status_icon} クエスト {quest['id']}: {quest['title']}")
-        print(f"   進捗: {completed_missions}/{total_missions} ミッション")
+        print(f"   進捗: {completed_checkpoints}/{total_checkpoints} チェックポイント")
         print(f"   作成日: {quest['created']}")
 
         if quest["status"] == "completed":
@@ -1032,8 +1032,8 @@ def accept_quest(title):
     new_quest = {
         "id": quest_id,
         "title": title,
-        "missions": [],
-        "current_mission": 0,
+        "checkpoints": [],
+        "current_checkpoint": 0,
         "created": get_current_date(),
         "status": "active"
     }
@@ -1048,7 +1048,7 @@ def accept_quest(title):
     print(f"   ID: {quest_id}")
     print(f"   タイトル: {title}")
     print()
-    print(f"次は: rpg add-mission {quest_id} \"最初のミッション\"")
+    print(f"次は: rpg add-checkpoint {quest_id} \"最初のチェックポイント\"")
     print()
 
 def show_quest(quest_id):
@@ -1065,16 +1065,16 @@ def show_quest(quest_id):
         print(f"❌ クエスト '{quest_id}' が見つかりません。")
         return
 
-    total_missions = len(quest["missions"])
-    completed_missions = sum(1 for m in quest["missions"] if m["completed"])
-    current = quest.get("current_mission", 0)
+    total_checkpoints = len(quest["checkpoints"])
+    completed_checkpoints = sum(1 for m in quest["checkpoints"] if m["completed"])
+    current = quest.get("current_checkpoint", 0)
 
     print()
     print("=" * 48)
     print(f"📜 クエスト {quest['id']}: {quest['title']}")
     print("=" * 48)
     print(f"作成日: {quest['created']}")
-    print(f"進捗: {completed_missions}/{total_missions} ミッション")
+    print(f"進捗: {completed_checkpoints}/{total_checkpoints} チェックポイント")
 
     if quest["status"] == "completed":
         print(f"ステータス: ✅ 完了済み")
@@ -1082,33 +1082,33 @@ def show_quest(quest_id):
         print(f"ステータス: 📝 進行中")
 
     print()
-    print("ミッション一覧:")
+    print("チェックポイント一覧:")
 
-    if not quest["missions"]:
-        print("  （まだミッションが設定されていません）")
+    if not quest["checkpoints"]:
+        print("  （まだチェックポイントが設定されていません）")
     else:
-        for i, mission in enumerate(quest["missions"]):
-            if mission["completed"]:
+        for i, checkpoint in enumerate(quest["checkpoints"]):
+            if checkpoint["completed"]:
                 icon = "✅"
             elif i == current:
                 icon = "👉"
             else:
                 icon = "⬜"
-            print(f"  {icon} {i+1}. {mission['description']}")
+            print(f"  {icon} {i+1}. {checkpoint['description']}")
 
     print()
 
-    if quest["status"] != "completed" and current < total_missions:
-        print(f"現在のミッション: {quest['missions'][current]['description']}")
+    if quest["status"] != "completed" and current < total_checkpoints:
+        print(f"現在のチェックポイント: {quest['checkpoints'][current]['description']}")
         print()
         print("コマンド:")
-        print(f"  rpg advance {quest_id}  - ミッション完了、次へ進む")
-        print(f"  rpg add-mission {quest_id} \"新しいミッション\" - ミッション追加")
+        print(f"  rpg advance {quest_id}  - チェックポイント完了、次へ進む")
+        print(f"  rpg add-checkpoint {quest_id} \"新しいチェックポイント\" - チェックポイント追加")
 
     print()
 
-def add_mission(quest_id, mission_description):
-    """クエストにミッションを追加"""
+def add_checkpoint(quest_id, checkpoint_description):
+    """クエストにチェックポイントを追加"""
     data = load_data()
 
     quest = None
@@ -1121,22 +1121,22 @@ def add_mission(quest_id, mission_description):
         print(f"❌ クエスト '{quest_id}' が見つかりません。")
         return
 
-    quest["missions"].append({
-        "description": mission_description,
+    quest["checkpoints"].append({
+        "description": checkpoint_description,
         "completed": False
     })
 
     save_data(data)
 
     print()
-    print(f"✅ ミッション追加完了！")
-    print(f"   「{mission_description}」")
+    print(f"✅ チェックポイント追加完了！")
+    print(f"   「{checkpoint_description}」")
     print()
     print(f"進捗を確認: rpg show {quest_id}")
     print()
 
 def advance_quest(quest_id):
-    """クエストを次のミッションに進める"""
+    """クエストを次のチェックポイントに進める"""
     data = load_data()
 
     quest = None
@@ -1151,31 +1151,31 @@ def advance_quest(quest_id):
         print(f"❌ クエスト '{quest_id}' が見つかりません。")
         return
 
-    current = quest.get("current_mission", 0)
+    current = quest.get("current_checkpoint", 0)
 
-    if current >= len(quest["missions"]):
-        print("❌ すでに全ミッションが完了しています。")
+    if current >= len(quest["checkpoints"]):
+        print("❌ すでに全チェックポイントが完了しています。")
         return
 
-    # 現在のミッションを完了
-    quest["missions"][current]["completed"] = True
-    quest["current_mission"] = current + 1
+    # 現在のチェックポイントを完了
+    quest["checkpoints"][current]["completed"] = True
+    quest["current_checkpoint"] = current + 1
 
     # ログ記録
     log_adventure(
         f"📜 クエスト {quest_id}",
-        quest["missions"][current]["description"],
+        quest["checkpoints"][current]["description"],
         "✓"
     )
 
     # 経験値獲得
-    exp_gain = 50  # ミッション完了は50 EXP
+    exp_gain = 50  # チェックポイント完了は50 EXP
     old_level = data["hero"]["level"]
     data["hero"]["exp"] += exp_gain
     data["hero"]["level"] = 1 + (data["hero"]["exp"] // 100)
 
     # クエスト完了チェック
-    if quest["current_mission"] >= len(quest["missions"]):
+    if quest["current_checkpoint"] >= len(quest["checkpoints"]):
         quest["status"] = "completed"
         data["hero"]["quests_completed"] += 1
 
@@ -1191,7 +1191,7 @@ def advance_quest(quest_id):
         tprint("🎊 クエスト完了！")
         print("=" * 48)
         tprint(f"📜 {quest['title']}")
-        print(f"✨ EXP +{exp_gain + bonus_exp} (ミッション+ボーナス)")
+        print(f"✨ EXP +{exp_gain + bonus_exp} (チェックポイント+ボーナス)")
         print(f"🏆 総EXP: {data['hero']['exp']}")
 
         if data["hero"]["level"] > old_level:
@@ -1207,12 +1207,12 @@ def advance_quest(quest_id):
 
     save_data(data)
 
-    # 次のミッション表示
-    next_mission = quest["missions"][quest["current_mission"]]
+    # 次のチェックポイント表示
+    next_checkpoint = quest["checkpoints"][quest["current_checkpoint"]]
 
     print()
     print("=" * 48)
-    tprint("✅ ミッション完了！")
+    tprint("✅ チェックポイント完了！")
     print("=" * 48)
     print(f"✨ EXP +{exp_gain}")
 
@@ -1223,10 +1223,10 @@ def advance_quest(quest_id):
         tprint("🎊" * 20, delay=0.005)
 
     print()
-    print("次のミッション:")
-    print(f"👉 {next_mission['description']}")
+    print("次のチェックポイント:")
+    print(f"👉 {next_checkpoint['description']}")
     print()
-    print(f"進捗: {quest['current_mission']}/{len(quest['missions'])} ミッション完了")
+    print(f"進捗: {quest['current_checkpoint']}/{len(quest['checkpoints'])} チェックポイント完了")
     print()
 
 # ==================== チェスト管理 ====================
@@ -1802,17 +1802,17 @@ def interactive_quest():
                     input("\n[Enter] で続ける...")
                     break
 
-                current = quest.get("current_mission", 0)
-                total_missions = len(quest["missions"])
+                current = quest.get("current_checkpoint", 0)
+                total_checkpoints = len(quest["checkpoints"])
 
-                if current >= total_missions:
+                if current >= total_checkpoints:
                     input("\n[Enter] で続ける...")
                     break
 
                 print()
                 action = show_menu([
-                    ("done", "✅ 現在のミッションを完了"),
-                    ("add", "➕ 新しいミッションを追加"),
+                    ("done", "✅ 現在のチェックポイントを完了"),
+                    ("add", "➕ 新しいチェックポイントを追加"),
                     ("back", "⬅️  戻る"),
                 ])
 
@@ -1829,9 +1829,9 @@ def interactive_quest():
                     if quest and quest["status"] == "completed":
                         break
                 elif action == "add":
-                    mission = input("新しいミッション内容: ").strip()
+                    mission = input("新しいチェックポイント内容: ").strip()
                     if mission:
-                        add_mission(quest_id, mission)
+                        add_checkpoint(quest_id, mission)
                         input("\n[Enter] で続ける...")
                 elif action == "back":
                     break
@@ -2079,8 +2079,8 @@ def show_help():
   rpg quests                         クエスト一覧
   rpg accept "タイトル"              新しいクエスト受注
   rpg show <id>                      クエスト詳細
-  rpg add-mission <id> "内容"        ミッション追加
-  rpg advance <id>                   次のミッションへ進む
+  rpg add-checkpoint <id> "内容"        チェックポイント追加
+  rpg advance <id>                   次のチェックポイントへ進む
 
 【ステータス】
   rpg status                         勇者のステータス表示
@@ -2092,7 +2092,7 @@ def show_help():
 
 【用語】
   フィールド探索 = ゴマタスク（草原でモンスター討伐、経験値稼ぎ）
-  クエスト = エピックタスク（大きな目標、順序付きミッション）
+  クエスト = エピックタスク（大きな目標、順序付きチェックポイント）
 
 【推奨される使い方】
   1. ./rpg.py で対話モード起動
@@ -2159,12 +2159,12 @@ def main():
             return
         show_quest(sys.argv[2])
 
-    elif command == "add-mission":
+    elif command == "add-checkpoint":
         if len(sys.argv) < 4:
-            print("❌ クエストIDとミッション内容を指定してください。")
-            print("   例: rpg add-mission 1 \"最初のステップ\"")
+            print("❌ クエストIDとチェックポイント内容を指定してください。")
+            print("   例: rpg add-checkpoint 1 \"最初のステップ\"")
             return
-        add_mission(sys.argv[2], sys.argv[3])
+        add_checkpoint(sys.argv[2], sys.argv[3])
 
     elif command == "advance":
         if len(sys.argv) < 3:

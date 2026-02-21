@@ -1,34 +1,66 @@
 {
   "field_tasks": {
     "🏠 部屋の整理": [
-      {"active": 1, "monster": "テーブルの上のものを1つ片付ける"},
-      {"active": 1, "monster": "床に落ちているものを拾って定位置に戻す"},
-      {"active": 1, "monster": "ブラウザのタブを1つ閉じる"},
-      {"active": 1, "monster": "テーブルの上のものを1つ片付ける"}
+      {
+        "active": 1,
+        "monster": "テーブルの上のものを1つ片付ける"
+      },
+      {
+        "active": 1,
+        "monster": "床に落ちているものを拾って定位置に戻す"
+      },
+      {
+        "active": 1,
+        "monster": "ブラウザのタブを1つ閉じる"
+      },
+      {
+        "active": 1,
+        "monster": "テーブルの上のものを1つ片付ける"
+      }
     ],
     "📚 学習": [
-      {"active": 1, "monster": "外国語の単語を１つ学ぶ"},
-      {"active": 1, "monster": "本を5分読む"},
-      {"active": 1, "monster": "問題集の問題を1つ解く"}
+      {
+        "active": 1,
+        "monster": "外国語の単語を１つ学ぶ"
+      },
+      {
+        "active": 1,
+        "monster": "本を5分読む"
+      },
+      {
+        "active": 1,
+        "monster": "問題集の問題を1つ解く"
+      }
     ],
     "💪 健康": [
-      {"active": 1, "monster": "ヨガのダウンドッグを1回やる"},
-      {"active": 1, "monster": "スクワットを10回する"},
-      {"active": 1, "monster": "ダンベルカールを10回する"}
+      {
+        "active": 1,
+        "monster": "ヨガのダウンドッグを1回やる"
+      },
+      {
+        "active": 1,
+        "monster": "スクワットを10回する"
+      },
+      {
+        "active": 1,
+        "monster": "ダンベルカールを10回する"
+      }
     ]
   },
   "quests": [
     {
-      "id": "3",
+      "id": "1",
       "title": "Python 3 エンジニア認定基礎試験に合格する",
-      "missions": [
+      "created": "2026-02-17",
+      "status": "active",
+      "checkpoints": [
         {
           "description": "試験ご紹介動画( https://www.youtube.com/watch?v=zBIWDs0PLeg )を見る",
-          "completed": true
+          "completed": false
         },
         {
           "description": "試験の概要を調べる（出題範囲・合格基準・受験料）",
-          "completed": true
+          "completed": false
         },
         {
           "description": "主教材「Pythonチュートリアル 第4版」を入手する",
@@ -91,9 +123,7 @@
           "completed": false
         }
       ],
-      "current_mission": 0,
-      "created": "2026-02-17",
-      "status": "active"
+      "current_checkpoint": 0
     }
   ],
   "chests": [],
