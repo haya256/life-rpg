@@ -3,14 +3,20 @@ patch.py — rpg.py 読み込み後に適用するオーバーライド
 
 rpg.py で定義された関数を Web 向けに差し替えます:
   - getch / animated_getch  → SharedArrayBuffer で単キー入力（Enter 不要）
-  - save_data / load_data   → postMessage 経由でメインスレッドの localStorage へ
+  - save_data / load_data   → インメモリキャッシュ + postMessage で localStorage 永続化
   - log_adventure           → postMessage 経由でメインスレッドの localStorage へ
 
 【localStorage と Web Worker の制約】
 Web Worker 内では localStorage にアクセスできないため、
-保存はメインスレッドへ postMessage({type:'save',...}) を送り、
+保存はメインスレッドへ postMessage({type:'storage_set',...}) を送り、
 メインスレッドが localStorage に書き込む。
-初期データは worker.js の init メッセージ経由で js.initialSavedData として渡される。
+
+【インメモリキャッシュの必要性】
+毎回 js.initialSavedData (起動時の初期値) を読んでしまうと、
+セッション中の変更 (explore() での exploring=True など) が
+次の load_data() 呼び出しに反映されない。
+→ _data_cache でセッション内変更を保持し、
+  save_data() でキャッシュ更新 + localStorage への永続化を行う。
 """
 
 import json
@@ -29,6 +35,8 @@ def _post(msg_dict):
 def getch():
     """1 文字キー入力。SharedArrayBuffer 経由でブロッキング受信。"""
     Atomics.store(js.statusArray, 0, 0)
+    # メインスレッドにキュー処理を促す（キューに溜まっている場合の即時送信）
+    _post({'type': 'ready_for_input'})
     Atomics.wait(js.statusArray, 0, 0)
     length = int(js.keyArray[0])
     raw = bytes([int(js.keyArray[i + 1]) for i in range(min(length, 32))])
@@ -46,27 +54,34 @@ def animated_getch():
     return getch()
 
 
-# ===== localStorage 永続化（メインスレッド経由） =====
+# ===== インメモリキャッシュ + localStorage 永続化 =====
 
 _LS_SAVE_KEY = 'life_rpg_savedata'
 _LS_LOG_KEY  = 'life_rpg_log'
 
-# ログはワーカー内でインメモリ管理し、更新のたびメインスレッドへ送る
-_log_cache = None
+# セッション中のデータキャッシュ（None = 未初期化）
+_data_cache = None
+_log_cache  = None
 
 
 def save_data(data):
-    """RPG データをメインスレッドの localStorage に保存。"""
+    """RPG データをキャッシュに保存し、localStorage にも永続化。"""
+    global _data_cache
+    _data_cache = data  # セッション内キャッシュを更新
     _post({
-        'type': 'storage_set',
-        'key':  _LS_SAVE_KEY,
+        'type':  'storage_set',
+        'key':   _LS_SAVE_KEY,
         'value': json.dumps(data, ensure_ascii=False, indent=2),
     })
 
 
 def load_data():
-    """RPG データを読み込む。初回はサンプルデータで初期化。"""
-    # js.initialSavedData は worker.js の init 処理でメインスレッドから渡される
+    """RPG データを読み込む。キャッシュ済みならキャッシュを返す。"""
+    global _data_cache
+    if _data_cache is not None:
+        return _data_cache  # セッション内で更新済みのデータを返す
+
+    # 初回のみ: メインスレッドから渡された localStorage の値を使用
     raw = js.initialSavedData
     if raw and str(raw) != 'None':
         data = json.loads(str(raw))
@@ -75,6 +90,7 @@ def load_data():
             data['chests'] = []
         if 'gold' not in data['hero']:
             data['hero']['gold'] = 0
+        _data_cache = data
         return data
 
     # 初回起動: _SAMPLE_DATA（worker.js が Python グローバルに注入）を使用
@@ -107,7 +123,7 @@ def log_adventure(category, message, symbol='⚔️'):
     entry = f'{date_str} {time_str} [{category}] {message} {symbol}\n'
     _log_cache += entry
     _post({
-        'type': 'storage_set',
-        'key':  _LS_LOG_KEY,
+        'type':  'storage_set',
+        'key':   _LS_LOG_KEY,
         'value': _log_cache,
     })

@@ -253,6 +253,9 @@ function startApp() {
     } else if (type === 'storage_set') {
       // Web Worker は localStorage 不可 → メインスレッドが代わりに書き込む
       try { localStorage.setItem(key, value); } catch (_) {}
+    } else if (type === 'ready_for_input') {
+      // Python が次のキー入力を待機中 → キューから即時送信
+      if (startApp._tryFlushQueue) startApp._tryFlushQueue();
     }
   };
 
@@ -261,15 +264,34 @@ function startApp() {
     term.write(`\r\n\x1b[31m[Worker Error] ${e.message}\x1b[0m\r\n`);
   };
 
-  // xterm.js のキー入力を SharedArrayBuffer 経由で Python に送る
-  term.onKey(({ key }) => {
+  // キー入力キュー（Python が読み取る前に複数キーが来ても失われないようにする）
+  const keyQueue = [];
+
+  function tryFlushQueue() {
+    if (keyQueue.length === 0) return;
+    // Python が待機中（statusArray == 0）のときだけ送る
+    if (Atomics.load(statusArray, 0) !== 0) return;
+    const key = keyQueue.shift();
     const encoded = new TextEncoder().encode(key);
     const len = Math.min(encoded.length, KEY_BUF_SIZE - 1);
     keyArray[0] = len;
     for (let i = 0; i < len; i++) keyArray[i + 1] = encoded[i];
     Atomics.store(statusArray, 0, 1);
     Atomics.notify(statusArray, 0);
+  }
+
+  // xterm.js のキー入力をキューに追加
+  term.onKey(({ key }) => {
+    keyQueue.push(key);
+    tryFlushQueue();
   });
+
+  // Python が 'ready_for_input' を送ってきたらキュー処理（即時応答）
+  // ※ worker.onmessage 内で呼び出すために参照を保持
+  startApp._tryFlushQueue = tryFlushQueue;
+
+  // バックアップ: 30ms ポーリング（タイミングずれの保険）
+  setInterval(tryFlushQueue, 30);
 
   // localStorage の既存データをメインスレッドで読んで Worker に渡す
   // (Web Worker 内では localStorage にアクセスできないため)
