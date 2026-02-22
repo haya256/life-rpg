@@ -73,6 +73,9 @@ sys.modules['msvcrt'] = _msvcrt
 # ===== ターミナルサイズ（固定値） =====
 shutil.get_terminal_size = lambda fallback=(80, 24): os.terminal_size((80, 24))
 
+# ===== os.system モック（battle() の 'clear' コマンドなどを無害化） =====
+os.system = lambda cmd: 0
+
 # ===== 標準出力 → xterm.js =====
 class _WebOut:
     def write(self, text):

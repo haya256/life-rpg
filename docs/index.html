@@ -256,6 +256,9 @@ function startApp() {
     } else if (type === 'ready_for_input') {
       // Python が次のキー入力を待機中 → キューから即時送信
       if (startApp._tryFlushQueue) startApp._tryFlushQueue();
+    } else if (type === 'clear_queue') {
+      // tprint() などの処理中に溜まったキーを破棄（堂々めぐり防止）
+      keyQueue.length = 0;
     }
   };
 

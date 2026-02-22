@@ -35,8 +35,8 @@ def _post(msg_dict):
 def getch():
     """1 文字キー入力。SharedArrayBuffer 経由でブロッキング受信。"""
     Atomics.store(js.statusArray, 0, 0)
-    # メインスレッドにキュー処理を促す（キューに溜まっている場合の即時送信）
-    _post({'type': 'ready_for_input'})
+    # tprint() などの処理中に溜まったキーを破棄してから待機
+    _post({'type': 'clear_queue'})
     Atomics.wait(js.statusArray, 0, 0)
     length = int(js.keyArray[0])
     raw = bytes([int(js.keyArray[i + 1]) for i in range(min(length, 32))])
