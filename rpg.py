@@ -1732,7 +1732,8 @@ def interactive():
     print()
 
     while True:
-        bgm.stop()  # メインメニューでは BGM を停止
+        # bgm.stop()  # メインメニューでは BGM を停止
+        bgm.play("field")  # いや、メインメニューにもBGMつけたい
         data = load_data()
         hero = data["hero"]
 
