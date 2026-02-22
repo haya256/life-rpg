@@ -18,5 +18,8 @@ venv/
 .DS_Store
 Thumbs.db
 
+# Other
+play.command
+
 # ゲームプレイログ・データ（プログラム開発と分離、自動tracking対象外）
 savedata/

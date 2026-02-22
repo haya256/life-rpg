@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>人生RPG — Web Demo</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0d0d0d;
+      color: #e0e0e0;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      overflow: hidden;
+    }
+
+    /* ── ヘッダー ── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 16px;
+      background: #1a1a2e;
+      border-bottom: 1px solid #2a2a4a;
+      flex-shrink: 0;
+    }
+    header h1 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #a78bfa;
+      letter-spacing: 0.05em;
+    }
+    header .badge {
+      font-size: 0.7rem;
+      background: #2a2a4a;
+      color: #7c7caa;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+    header .spacer { flex: 1; }
+    header .hint {
+      font-size: 0.72rem;
+      color: #555;
+    }
+
+    /* ── ターミナル領域 ── */
+    #terminal-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding: 8px;
+    }
+    #terminal {
+      flex: 1;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    /* xterm のスクロールバーを非表示に（コンテンツはターミナル内スクロール） */
+    .xterm-viewport::-webkit-scrollbar { width: 6px; }
+    .xterm-viewport::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+    /* ── 起動中オーバーレイ ── */
+    #overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(13, 13, 13, 0.92);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      z-index: 100;
+      transition: opacity 0.4s;
+    }
+    #overlay.hidden { opacity: 0; pointer-events: none; }
+
+    #overlay .logo {
+      font-size: 2.8rem;
+      line-height: 1;
+    }
+    #overlay .title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #a78bfa;
+      letter-spacing: 0.08em;
+    }
+    #overlay .subtitle {
+      font-size: 0.85rem;
+      color: #666;
+    }
+    #overlay .status-msg {
+      font-size: 0.85rem;
+      color: #7c7caa;
+      min-height: 1.4em;
+      text-align: center;
+    }
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid #2a2a4a;
+      border-top-color: #a78bfa;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── SW 非対応の警告 ── */
+    #sw-warning {
+      display: none;
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #3a1a1a;
+      border: 1px solid #7a3030;
+      color: #f87171;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      z-index: 200;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ヘッダー -->
+<header>
+  <h1>⚔️ 人生RPG</h1>
+  <span class="badge">Web Demo</span>
+  <span class="spacer"></span>
+  <span class="hint">データはブラウザの localStorage に保存されます</span>
+</header>
+
+<!-- ターミナル -->
+<div id="terminal-wrap">
+  <div id="terminal"></div>
+</div>
+
+<!-- 起動中オーバーレイ -->
+<div id="overlay">
+  <div class="logo">⚔️</div>
+  <div class="title">人生RPG</div>
+  <div class="subtitle">Life Adventure System — Web Demo</div>
+  <div class="spinner"></div>
+  <div id="status-msg" class="status-msg">準備中...</div>
+</div>
+
+<!-- SW / SharedArrayBuffer 非対応警告 -->
+<div id="sw-warning">
+  ⚠️ SharedArrayBuffer が利用できません。HTTPS かつ最新ブラウザでお試しください。
+</div>
+
+<!-- xterm.js -->
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+
+<script>
+'use strict';
+
+// ============================================================
+// 0. 定数
+// ============================================================
+const STATUS_BUF_SIZE = 4;    // Int32Array (4 bytes) — index 0 だけ使用
+const KEY_BUF_SIZE    = 256;  // Uint8Array — [0]: length, [1..n]: UTF-8 bytes
+
+// ============================================================
+// 1. xterm.js 初期化
+// ============================================================
+const term = new Terminal({
+  cursorBlink: true,
+  fontSize: 14,
+  fontFamily: '"Cascadia Code", "Fira Code", "Consolas", monospace',
+  theme: {
+    background:  '#0d1117',
+    foreground:  '#c9d1d9',
+    cursor:      '#a78bfa',
+    cursorAccent:'#0d1117',
+    black:       '#0d1117',
+    red:         '#ff7b72',
+    green:       '#7ee787',
+    yellow:      '#e3b341',
+    blue:        '#79c0ff',
+    magenta:     '#d2a8ff',
+    cyan:        '#56d364',
+    white:       '#c9d1d9',
+    brightBlack: '#484f58',
+    brightRed:   '#ffa198',
+    brightGreen: '#56d364',
+    brightYellow:'#e3b341',
+    brightBlue:  '#79c0ff',
+    brightMagenta:'#d2a8ff',
+    brightCyan:  '#56d364',
+    brightWhite: '#ffffff',
+  },
+  convertEol: true,  // LF → CRLF 自動変換（rpg.py は \n を多用するため）
+  scrollback: 1000,
+});
+
+const fitAddon = new FitAddon.FitAddon();
+term.loadAddon(fitAddon);
+term.open(document.getElementById('terminal'));
+fitAddon.fit();
+
+window.addEventListener('resize', () => fitAddon.fit());
+
+// ============================================================
+// 2. SharedArrayBuffer + Worker のセットアップ
+// ============================================================
+function setStatus(msg) {
+  document.getElementById('status-msg').textContent = msg;
+}
+
+function hideOverlay() {
+  const ol = document.getElementById('overlay');
+  ol.classList.add('hidden');
+  // フェード後に DOM から除去してクリックを受け付けるようにする
+  setTimeout(() => ol.remove(), 500);
+  term.focus();
+}
+
+function startApp() {
+  if (typeof SharedArrayBuffer === 'undefined') {
+    document.getElementById('sw-warning').style.display = 'block';
+    setStatus('❌ SharedArrayBuffer が利用できません');
+    return;
+  }
+
+  // SharedArrayBuffer 作成
+  const statusBuffer = new SharedArrayBuffer(STATUS_BUF_SIZE);
+  const keyBuffer    = new SharedArrayBuffer(KEY_BUF_SIZE);
+  const statusArray  = new Int32Array(statusBuffer);
+  const keyArray     = new Uint8Array(keyBuffer);
+
+  // Worker 起動
+  const worker = new Worker('./worker.js');
+
+  // Worker からのメッセージ処理
+  worker.onmessage = (e) => {
+    const { type, text } = e.data;
+    if (type === 'output') {
+      term.write(text);
+    } else if (type === 'status') {
+      setStatus(text);
+    } else if (type === 'ready') {
+      hideOverlay();
+    } else if (type === 'done') {
+      term.write('\r\n\x1b[2m[ゲームが終了しました。ページをリロードすると再プレイできます]\x1b[0m\r\n');
+    }
+  };
+
+  worker.onerror = (e) => {
+    setStatus('❌ Worker エラー: ' + e.message);
+    term.write(`\r\n\x1b[31m[Worker Error] ${e.message}\x1b[0m\r\n`);
+  };
+
+  // xterm.js のキー入力を SharedArrayBuffer 経由で Python に送る
+  term.onKey(({ key }) => {
+    const encoded = new TextEncoder().encode(key);
+    const len = Math.min(encoded.length, KEY_BUF_SIZE - 1);
+    keyArray[0] = len;
+    for (let i = 0; i < len; i++) keyArray[i + 1] = encoded[i];
+    Atomics.store(statusArray, 0, 1);
+    Atomics.notify(statusArray, 0);
+  });
+
+  // Worker にバッファを渡して起動
+  worker.postMessage({ type: 'init', statusBuffer, keyBuffer });
+}
+
+// ============================================================
+// 3. Service Worker 登録 → COOP/COEP ヘッダー付与 → 再ロード
+// ============================================================
+(async function bootstrap() {
+  if (!('serviceWorker' in navigator)) {
+    // SW 非対応ブラウザ: そのまま試みる（GitHub Pages 以外の環境など）
+    startApp();
+    return;
+  }
+
+  if (window.crossOriginIsolated) {
+    // すでに cross-origin isolated → そのまま起動
+    startApp();
+    return;
+  }
+
+  // SW を登録して COOP/COEP ヘッダーを取得し、ページをリロードする
+  setStatus('🔧 セキュリティヘッダーを設定中...');
+  try {
+    const reg = await navigator.serviceWorker.register('./coi-serviceworker.js');
+
+    if (navigator.serviceWorker.controller) {
+      // SW がすでにこのページを制御 → リロード
+      location.reload();
+    } else {
+      // SW がまだアクティブでない → アクティブ化を待ってリロード
+      const sw = reg.installing || reg.waiting;
+      if (sw) {
+        sw.addEventListener('statechange', function () {
+          if (this.state === 'activated') location.reload();
+        });
+      } else {
+        // すでに active だが controller でない場合
+        location.reload();
+      }
+    }
+  } catch (err) {
+    console.error('[SW]', err);
+    // SW 登録失敗でも試みる
+    startApp();
+  }
+})();
+</script>
+</body>
+</html>
