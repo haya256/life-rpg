@@ -68,6 +68,10 @@ def save_data(data):
     """RPG データをキャッシュに保存し、localStorage にも永続化。"""
     global _data_cache
     _data_cache = data  # セッション内キャッシュを更新
+    # --- DEBUG ---
+    ce = (data.get('field_state') or {}).get('current_encounter')
+    _post({'type': 'output', 'text': f'[DBG save_data] ce={ce!r}\n'})
+    # --- /DEBUG ---
     _post({
         'type':  'storage_set',
         'key':   _LS_SAVE_KEY,
@@ -79,6 +83,10 @@ def load_data():
     """RPG データを読み込む。キャッシュ済みならキャッシュを返す。"""
     global _data_cache
     if _data_cache is not None:
+        # --- DEBUG ---
+        ce = (_data_cache.get('field_state') or {}).get('current_encounter')
+        _post({'type': 'output', 'text': f'[DBG load_data] cache hit, ce={ce!r}\n'})
+        # --- /DEBUG ---
         return _data_cache  # セッション内で更新済みのデータを返す
 
     # 初回のみ: メインスレッドから渡された localStorage の値を使用
