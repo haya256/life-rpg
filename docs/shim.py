@@ -17,6 +17,14 @@ from types import ModuleType
 import js
 from pyodide.ffi import to_js
 
+
+def _post(msg_dict):
+    """Python dict を plain JS Object として postMessage する。
+    to_js のデフォルトは Map になり postMessage 不可なので
+    dict_converter=js.Object.fromEntries で plain object に変換する。"""
+    js.postMessage(to_js(msg_dict, dict_converter=js.Object.fromEntries))
+
+
 # ===== モジュールモック =====
 
 _termios = ModuleType('termios')
@@ -68,7 +76,7 @@ shutil.get_terminal_size = lambda fallback=(80, 24): os.terminal_size((80, 24))
 # ===== 標準出力 → xterm.js =====
 class _WebOut:
     def write(self, text):
-        js.postMessage(to_js({'type': 'output', 'text': str(text)}))
+        _post({'type': 'output', 'text': str(text)})
         return len(str(text))
 
     def flush(self):

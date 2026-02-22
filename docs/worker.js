@@ -2,7 +2,7 @@
  * worker.js — Pyodide を動かす Web Worker
  *
  * 処理の流れ:
- *   1. main スレッドから SharedArrayBuffer を受け取り self に設定
+ *   1. main スレッドから SharedArrayBuffer と初期保存データを受け取る
  *   2. Pyodide をロード
  *   3. rpg.py / shim.py / patch.py / sample_data.json を並列 fetch
  *   4. shim.py (モック・I/O) → rpg.py → patch.py の順で実行
@@ -14,6 +14,11 @@
  *
  * 画面出力:
  *   Python の sys.stdout.write() が postMessage({type:'output', text}) → xterm.js
+ *
+ * localStorage:
+ *   Web Worker 内では localStorage 不可のため、
+ *   保存時は postMessage({type:'storage_set', key, value}) でメインスレッドに委託。
+ *   初期データは init メッセージで受け取り self.initialSavedData / self.initialSavedLog に保持。
  */
 
 importScripts('https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js');
@@ -28,6 +33,11 @@ self.onmessage = async (e) => {
   // → Python 側で js.statusArray / js.keyArray としてアクセスできる
   self.statusArray = new Int32Array(e.data.statusBuffer);
   self.keyArray    = new Uint8Array(e.data.keyBuffer);
+
+  // localStorage の初期値をメインスレッドから受け取り Python に渡す
+  // (Web Worker は localStorage に直接アクセスできないため)
+  self.initialSavedData = e.data.initialSavedData ?? null;
+  self.initialSavedLog  = e.data.initialSavedLog  ?? null;
 
   try {
     await runGame();

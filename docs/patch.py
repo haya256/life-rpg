@@ -3,13 +3,25 @@ patch.py — rpg.py 読み込み後に適用するオーバーライド
 
 rpg.py で定義された関数を Web 向けに差し替えます:
   - getch / animated_getch  → SharedArrayBuffer で単キー入力（Enter 不要）
-  - save_data / load_data   → localStorage で永続化
-  - log_adventure           → localStorage に追記
+  - save_data / load_data   → postMessage 経由でメインスレッドの localStorage へ
+  - log_adventure           → postMessage 経由でメインスレッドの localStorage へ
+
+【localStorage と Web Worker の制約】
+Web Worker 内では localStorage にアクセスできないため、
+保存はメインスレッドへ postMessage({type:'save',...}) を送り、
+メインスレッドが localStorage に書き込む。
+初期データは worker.js の init メッセージ経由で js.initialSavedData として渡される。
 """
 
 import json
 import js
-from js import Atomics, localStorage
+from js import Atomics
+from pyodide.ffi import to_js
+
+
+def _post(msg_dict):
+    """plain JS Object として postMessage（Map 変換回避）"""
+    js.postMessage(to_js(msg_dict, dict_converter=js.Object.fromEntries))
 
 
 # ===== 単キー入力（Enter 不要） =====
@@ -34,23 +46,30 @@ def animated_getch():
     return getch()
 
 
-# ===== localStorage 永続化 =====
+# ===== localStorage 永続化（メインスレッド経由） =====
 
 _LS_SAVE_KEY = 'life_rpg_savedata'
 _LS_LOG_KEY  = 'life_rpg_log'
 
+# ログはワーカー内でインメモリ管理し、更新のたびメインスレッドへ送る
+_log_cache = None
+
 
 def save_data(data):
-    """RPG データを localStorage に保存。"""
-    localStorage.setItem(_LS_SAVE_KEY,
-                         json.dumps(data, ensure_ascii=False, indent=2))
+    """RPG データをメインスレッドの localStorage に保存。"""
+    _post({
+        'type': 'storage_set',
+        'key':  _LS_SAVE_KEY,
+        'value': json.dumps(data, ensure_ascii=False, indent=2),
+    })
 
 
 def load_data():
-    """RPG データを localStorage から読み込む。初回はサンプルデータで初期化。"""
-    saved = localStorage.getItem(_LS_SAVE_KEY)
-    if saved:
-        data = json.loads(saved)
+    """RPG データを読み込む。初回はサンプルデータで初期化。"""
+    # js.initialSavedData は worker.js の init 処理でメインスレッドから渡される
+    raw = js.initialSavedData
+    if raw and str(raw) != 'None':
+        data = json.loads(str(raw))
         # マイグレーション（旧データへの後方互換）
         if 'chests' not in data:
             data['chests'] = []
@@ -78,9 +97,17 @@ def load_data():
 
 
 def log_adventure(category, message, symbol='⚔️'):
-    """冒険記録を localStorage に追記。"""
-    existing = localStorage.getItem(_LS_LOG_KEY) or '# 冒険の記録\n'
+    """冒険記録をメインスレッドの localStorage に追記。"""
+    global _log_cache
+    if _log_cache is None:
+        raw = js.initialSavedLog
+        _log_cache = str(raw) if raw and str(raw) != 'None' else '# 冒険の記録\n'
     date_str = get_current_date()
     time_str = get_current_time()
     entry = f'{date_str} {time_str} [{category}] {message} {symbol}\n'
-    localStorage.setItem(_LS_LOG_KEY, existing + entry)
+    _log_cache += entry
+    _post({
+        'type': 'storage_set',
+        'key':  _LS_LOG_KEY,
+        'value': _log_cache,
+    })

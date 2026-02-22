@@ -241,7 +241,7 @@ function startApp() {
 
   // Worker からのメッセージ処理
   worker.onmessage = (e) => {
-    const { type, text } = e.data;
+    const { type, text, key, value } = e.data;
     if (type === 'output') {
       term.write(text);
     } else if (type === 'status') {
@@ -250,6 +250,9 @@ function startApp() {
       hideOverlay();
     } else if (type === 'done') {
       term.write('\r\n\x1b[2m[ゲームが終了しました。ページをリロードすると再プレイできます]\x1b[0m\r\n');
+    } else if (type === 'storage_set') {
+      // Web Worker は localStorage 不可 → メインスレッドが代わりに書き込む
+      try { localStorage.setItem(key, value); } catch (_) {}
     }
   };
 
@@ -268,8 +271,13 @@ function startApp() {
     Atomics.notify(statusArray, 0);
   });
 
-  // Worker にバッファを渡して起動
-  worker.postMessage({ type: 'init', statusBuffer, keyBuffer });
+  // localStorage の既存データをメインスレッドで読んで Worker に渡す
+  // (Web Worker 内では localStorage にアクセスできないため)
+  const initialSavedData = localStorage.getItem('life_rpg_savedata') ?? null;
+  const initialSavedLog  = localStorage.getItem('life_rpg_log')      ?? null;
+
+  // Worker にバッファと初期データを渡して起動
+  worker.postMessage({ type: 'init', statusBuffer, keyBuffer, initialSavedData, initialSavedLog });
 }
 
 // ============================================================
