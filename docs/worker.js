@@ -73,11 +73,19 @@ async function runGame() {
   // rpg.py が __file__ から SCRIPT_DIR を解決するために設定
   pyodide.globals.set('__file__', '/home/pyodide/rpg.py');
 
+  // rpg.py 末尾の `if __name__ == "__main__": main()` を抑制するため
+  // 一時的に __name__ を変更して実行後に戻す
+  pyodide.globals.set('__name__', 'rpg_module');
+
   // 1. シム (モック・I/O パッチ) を適用
   pyodide.runPython(shimCode);
 
   // 2. rpg.py を実行 (関数・定数を Pyodide グローバル空間に定義)
+  //    __name__ != '__main__' なので main() は自動実行されない
   pyodide.runPython(rpgCode);
+
+  // __name__ を元に戻す（念のため）
+  pyodide.globals.set('__name__', '__main__');
 
   // 3. パッチを適用 (getch / save_data / load_data などを上書き)
   //    rpg.py の関数は __globals__ で Pyodide グローバルを参照するため、
