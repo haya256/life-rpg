@@ -75,12 +75,6 @@ def explore(mode="random", count=5):
     print("=" * 48)
     print(f"🎯 今回の探索: {len(session_encounters)}体のモンスターと遭遇予定")
     print()
-    print("📜 コマンド:")
-    print("   rpg battle   - 次のモンスターと遭遇")
-    print("   rpg victory  - モンスターを倒した！")
-    print("   rpg flee     - 逃げる（スキップ）")
-    print("   rpg return   - 街に戻る（探索終了）")
-    print()
 
 def battle():
     """モンスターとエンカウント"""
@@ -88,7 +82,6 @@ def battle():
 
     if not data["field_state"]["exploring"]:
         print("❌ フィールド探索中ではありません。")
-        print("   'rpg explore' でフィールドに出かけてください。")
         return
 
     if data["field_state"]["current_encounter"]:
@@ -99,8 +92,6 @@ def battle():
         print(f"   📍 {encounter['field']}")
         print(f"   👹 {encounter['monster']}")
         print()
-        print("   'rpg victory' でバトルを完了するか、")
-        print("   'rpg flee' で逃げてください。")
         return
 
     # 次のエンカウント
@@ -109,7 +100,6 @@ def battle():
         print("🎊 今回の探索は終了しました！")
         print(f"   勝利数: {data['field_state']['session_victories']}")
         print()
-        print("   'rpg return' で街に戻ってください。")
         return
 
     encounter = data["field_state"]["session_encounters"][0]
@@ -130,9 +120,6 @@ def battle():
     print()
     print(f"📊 進捗: {victories}勝 / 残り{remaining}体")
     print()
-    print("💪 タスクを実行して、'rpg victory' で勝利を報告してください。")
-    print("🏃 または 'rpg flee' で逃げることもできます。")
-    print()
 
 def victory():
     """バトル勝利（タスク完了）"""
@@ -144,7 +131,6 @@ def victory():
 
     if not data["field_state"]["current_encounter"]:
         print("❌ 現在エンカウント中ではありません。")
-        print("   'rpg battle' でモンスターと遭遇してください。")
         return
 
     encounter = data["field_state"]["current_encounter"]
@@ -206,11 +192,9 @@ def victory():
     if remaining > 0:
         print(f"   残り {remaining}体")
         print()
-        print("   'rpg battle' で次のモンスターへ")
     else:
         print()
         tprint("🎊 今回の探索は終了しました！")
-        print("   'rpg return' で街に戻ってください。")
     print()
 
 def flee():
@@ -241,11 +225,9 @@ def flee():
     if remaining > 0:
         print(f"   残り {remaining}体")
         print()
-        print("   'rpg battle' で次のモンスターへ")
     else:
         print()
         print("🎊 今回の探索は終了しました！")
-        print("   'rpg return' で街に戻ってください。")
     print()
 
 def seal():
@@ -297,11 +279,9 @@ def seal():
     if remaining > 0:
         print(f"   残り {remaining}体")
         print()
-        print("   'rpg battle' で次のモンスターへ")
     else:
         print()
         tprint("🎊 今回の探索は終了しました！")
-        print("   'rpg return' で街に戻ってください。")
     print()
 
 def unseal():
@@ -329,7 +309,6 @@ def unseal():
     if not sealed_monsters:
         print()
         print("❌ 封印されたモンスターがいません。")
-        print("   'rpg seal' でモンスターを封印できます。")
         print()
         return
 
@@ -363,8 +342,6 @@ def unseal():
     tprint(f"📍 {unsealed['field']}")
     print()
     print(f"💡 {current_encounter['monster']} は後回しになりました。")
-    print()
-    print("💪 タスクを実行して、'rpg victory' で勝利を報告してください。")
     print()
 
 def create_monster():
@@ -454,7 +431,7 @@ def unleash_all_monsters():
 
     print()
     print("=" * 48)
-    tprint("🌑 闇の時代の再来...", delay=0.05)
+    tprint("🌑 闇の時代の再来...", delay=0.1)
     print("=" * 48)
     print()
     tprint(f"   {unleashed_count}体のモンスターの封印が解かれた！")
