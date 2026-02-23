@@ -1222,6 +1222,54 @@ def show_log():
     print()
     print(content)
 
+# ==================== モンスター図鑑 ====================
+
+def show_monster_encyclopedia():
+    """神モード専用：全モンスターの一覧を表示する"""
+    data = load_data()
+
+    print()
+    print("=" * 48)
+    print("📖 モンスター図鑑")
+    print("=" * 48)
+
+    if not data["field_tasks"]:
+        print()
+        print("   モンスターがまだいません。")
+        print()
+        input("[Enter] で続ける...")
+        return
+
+    sign = lambda v: ("+" if v > 0 else "") + str(v)
+
+    total_monsters = 0
+    total_active = 0
+
+    for field_name, monsters in data["field_tasks"].items():
+        if not monsters:
+            continue
+        active_count = sum(1 for m in monsters if m.get("active", 1) == 1)
+        print()
+        print(f"  {field_name}  ({len(monsters)}体 / 活動中 {active_count}体)")
+        print()
+        for m in monsters:
+            active = m.get("active", 1)
+            weight = m.get("weight", 0)
+            gold = m.get("gold", 1)
+            status = "✅" if active else "🔒"
+            sealed_label = "  [封印中]" if not active else ""
+            print(f"    {status} {m['monster']}")
+            print(f"         出現率 {sign(weight)}  💰 {gold}G{sealed_label}")
+        total_monsters += len(monsters)
+        total_active += active_count
+
+    print()
+    print("-" * 48)
+    print(f"合計: {total_monsters}体  活動中: {total_active}体  封印中: {total_monsters - total_active}体")
+    print()
+    input("[Enter] で続ける...")
+
+
 # ==================== 対話モード ====================
 
 def interactive():
@@ -1254,6 +1302,7 @@ def interactive():
             ("log", "📖 冒険の記録"),
             ("quit", "🚪 終了"),
         ], god_items=[
+            ("encyclopedia", "📖 モンスター図鑑"),
             ("create", "✨ モンスターを創造する"),
             ("unleash", "🌑 闇の時代の再来（全モンスター解放）"),
         ])
@@ -1277,6 +1326,8 @@ def interactive():
             print("=" * 48)
             print()
             break
+        elif choice == "encyclopedia":
+            show_monster_encyclopedia()
         elif choice == "create":
             create_monster()
         elif choice == "unleash":
