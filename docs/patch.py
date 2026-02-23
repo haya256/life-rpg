@@ -112,6 +112,16 @@ def load_data():
     return data
 
 
+# ===== 勝利BGM トリガー =====
+
+_original_victory = victory
+
+def victory():
+    """バトル勝利（Web版）: 元の処理を実行してから勝利BGMを再生。"""
+    _original_victory()
+    _post({'type': 'play_bgm', 'name': 'victory'})
+
+
 def log_adventure(category, message, symbol='⚔️'):
     """冒険記録をメインスレッドの localStorage に追記。"""
     global _log_cache
