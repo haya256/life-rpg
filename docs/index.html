@@ -163,88 +163,6 @@
 'use strict';
 
 // ============================================================
-// 0. BGM ユーティリティ（Web Audio API）
-// ============================================================
-
-/**
- * 勝利ファンファーレを Web Audio API で生成・再生する。
- * C4 → E4 → G4 → C5 の上昇音型 + ドラムロール風フィニッシュ。
- * 外部ファイル不要。
- */
-function playVictoryFanfare() {
-  try {
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
-
-    // 音符定義: [周波数(Hz), 開始(秒), 長さ(秒), 音量]
-    const melody = [
-      [261.63, 0.00, 0.14, 0.38],  // C4
-      [329.63, 0.15, 0.14, 0.38],  // E4
-      [392.00, 0.30, 0.14, 0.38],  // G4
-      [523.25, 0.45, 0.70, 0.48],  // C5 (長め)
-    ];
-
-    // トランペット風（sawtooth + 2倍音 sine でハーモニクス付与）
-    melody.forEach(([freq, start, dur, vol]) => {
-      [
-        { type: 'sawtooth', freqMul: 1,   volMul: 1.0 },
-        { type: 'sine',     freqMul: 2,   volMul: 0.18 },
-        { type: 'sine',     freqMul: 3,   volMul: 0.08 },
-      ].forEach(({ type, freqMul, volMul }) => {
-        const osc  = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-
-        osc.type = type;
-        osc.frequency.value = freq * freqMul;
-
-        const t = ctx.currentTime + start;
-        gain.gain.setValueAtTime(0, t);
-        gain.gain.linearRampToValueAtTime(vol * volMul, t + 0.02);
-        gain.gain.setValueAtTime(vol * volMul * 0.85, t + dur - 0.06);
-        gain.gain.linearRampToValueAtTime(0, t + dur);
-
-        osc.start(t);
-        osc.stop(t + dur + 0.02);
-      });
-    });
-
-    // ドラムロール風: C5 直前にノイズバーストを 6 連打
-    const rollStart = ctx.currentTime + 0.30;
-    for (let i = 0; i < 6; i++) {
-      const bufLen = Math.floor(ctx.sampleRate * 0.025);
-      const buf    = ctx.createBuffer(1, bufLen, ctx.sampleRate);
-      const data   = buf.getChannelData(0);
-      for (let j = 0; j < bufLen; j++) data[j] = (Math.random() * 2 - 1);
-
-      const src    = ctx.createBufferSource();
-      const filt   = ctx.createBiquadFilter();
-      const gain   = ctx.createGain();
-
-      filt.type            = 'bandpass';
-      filt.frequency.value = 220;
-      filt.Q.value         = 0.6;
-
-      src.buffer = buf;
-      src.connect(filt);
-      filt.connect(gain);
-      gain.connect(ctx.destination);
-
-      const t = rollStart + i * 0.025;
-      gain.gain.setValueAtTime(0.10 * (i + 1) / 6, t);
-      gain.gain.linearRampToValueAtTime(0, t + 0.025);
-
-      src.start(t);
-    }
-
-  } catch (e) {
-    console.warn('[BGM]', e);
-  }
-}
-
-// ============================================================
 // 2. 定数
 // ============================================================
 const STATUS_BUF_SIZE = 4;    // Int32Array (4 bytes) — index 0 だけ使用
@@ -341,8 +259,6 @@ function startApp() {
     } else if (type === 'clear_queue') {
       // tprint() などの処理中に溜まったキーを破棄（堂々めぐり防止）
       keyQueue.length = 0;
-    } else if (type === 'play_bgm') {
-      if (e.data.name === 'victory') playVictoryFanfare();
     }
   };
 
