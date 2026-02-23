@@ -109,6 +109,13 @@ if _BGM_AVAILABLE:
                 ]
                 self._sounds['quest'] = self._build_song(quest_notes, bpm=65)
 
+                # ── 勝利ファンファーレ: C メジャー、明るい、120 BPM（1回再生） ──
+                victory_notes = [
+                    (C4, 0.25), (E4, 0.25), (G4, 0.25), (C5, 0.75),
+                    (G4, 0.25), (C5, 1.0),
+                ]
+                self._sounds['victory'] = self._build_song(victory_notes, bpm=120)
+
                 self._ready = True
                 # 既に play() が呼ばれていたら遅延再生
                 if self._current:
@@ -126,7 +133,8 @@ if _BGM_AVAILABLE:
                 except Exception:
                     pass
             try:
-                self._channel = sound.play(loops=-1)
+                loops = 0 if scene == 'victory' else -1
+                self._channel = sound.play(loops=loops)
             except Exception:
                 pass
 
@@ -681,6 +689,8 @@ def victory():
         encounter["monster"],
         "✓"
     )
+
+    bgm.play("victory")  # 勝利ファンファーレ（1回再生）
 
     # 結果表示
     print()
