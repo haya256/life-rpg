@@ -537,14 +537,6 @@ def rename_monster():
     tprint(f"   {old_name}  →  {new_name}")
     print()
 
-def _offer_rate_change(encounter):
-    """神モード：戦闘後に出現率変更を提案する"""
-    print()
-    ans = input(f"⚖️  [{encounter['monster']}] の出現率を変更しますか？ (y/N): ").strip().lower()
-    if ans == "y":
-        set_monster_rate(encounter=encounter)
-        input("\n[Enter] で続ける...")
-
 def set_monster_rate(encounter=None):
     """神モード専用：現在のモンスターの出現率を設定する"""
     data = load_data()
@@ -1365,6 +1357,7 @@ def interactive_field_explore():
     bgm.play("field")  # フィールド探索 BGM 開始
 
     # 探索ループ
+    last_encounter = None
     while True:
         data = load_data()
 
@@ -1376,12 +1369,6 @@ def interactive_field_explore():
         remaining = len(data["field_state"]["session_encounters"])
         if data["field_state"]["current_encounter"]:
             remaining += 1
-
-        if remaining == 0:
-            # 全て終了
-            return_to_town()
-            input("\n[Enter] で続ける...")
-            break
 
         # 現在のエンカウント状態チェック
         if data["field_state"]["current_encounter"]:
@@ -1400,12 +1387,12 @@ def interactive_field_explore():
             choice = show_menu([
                 ("victory", "✅ 完了！（勝利）"),
                 ("flee", "🏃 逃げる（スキップ）"),
-                ("seal", "🔒 封印（このモンスターを二軍に移動）"),
-                ("unseal", "🔓 封印解除（二軍のモンスターと入れ替え）"),
                 ("return", "🏠 街に戻る（探索中断）"),
             ], god_items=[
                 ("rename", "✏️  このモンスターの名前を変更する"),
                 ("set_rate", "⚖️  このモンスターの出現率を変更する"),
+                ("seal", "🔒 封印（このモンスターを二軍に移動）"),
+                ("unseal", "🔓 封印解除（二軍のモンスターと入れ替え）"),
                 ("delete", "🔥 このモンスターを世界から消す"),
             ])
 
@@ -1413,13 +1400,9 @@ def interactive_field_explore():
                 last_encounter = data["field_state"]["current_encounter"].copy()
                 victory()
                 input("\n[Enter] で続ける...")
-                if rpg_ui.god_mode:
-                    _offer_rate_change(last_encounter)
             elif choice == "flee":
                 last_encounter = data["field_state"]["current_encounter"].copy()
                 flee()
-                if rpg_ui.god_mode:
-                    _offer_rate_change(last_encounter)
             elif choice == "seal":
                 seal()
                 input("\n[Enter] で続ける...")
@@ -1444,15 +1427,17 @@ def interactive_field_explore():
 
         else:
             bgm.play("field")  # エンカウント待機中はフィールド BGM に戻す
-            # 次のモンスターとエンカウント
             print()
             print("-" * 48)
             print(f"📊 進捗: {data['field_state']['session_victories']}勝 / 残り{remaining}体")
             print("-" * 48)
             print()
-            choice = show_menu([
-                ("battle", "⚔️  次のモンスターとバトル"),
-                ("return", "🏠 街に戻る（探索終了）"),
+            main_items = []
+            if remaining > 0:
+                main_items.append(("battle", "⚔️  次のモンスターとバトル"))
+            main_items.append(("return", "🏠 街に戻る（探索終了）"))
+            choice = show_menu(main_items, god_items=[
+                ("set_rate", "⚖️  直前のモンスターの出現率を変更する"),
             ])
 
             if choice == "battle":
@@ -1461,6 +1446,12 @@ def interactive_field_explore():
                 return_to_town()
                 input("\n[Enter] で続ける...")
                 break
+            elif choice == "set_rate":
+                if last_encounter:
+                    set_monster_rate(encounter=last_encounter)
+                    input("\n[Enter] で続ける...")
+                else:
+                    print("❌ 直前のモンスターがありません。")
             else:
                 print("❌ 無効な選択です。")
 
