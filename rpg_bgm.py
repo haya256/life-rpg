@@ -55,7 +55,7 @@ if _BGM_AVAILABLE:
             mx = _np.max(_np.abs(combined))
             if mx > 0:
                 combined = combined / mx
-            arr = (combined * 32767 * 0.55).astype(_np.int16)
+            arr = (combined * 32767 * 0.01).astype(_np.int16)
             return _pygame.sndarray.make_sound(arr)
 
         def _build_all(self):
