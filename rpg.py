@@ -260,12 +260,22 @@ def seal():
         print(f"⚠️  モンスター '{encounter['monster']}' が見つかりませんでした。")
         return
 
-    # エンカウントをスキップ（ログには残さない）
+    # 封印したモンスターをセッションから取り除く
     data["field_state"]["session_encounters"].pop(0)
-    data["field_state"]["current_encounter"] = None
     data["hero"]["total_battles"] += 1  # バトル数だけカウント
 
-    save_data(data)
+    # 代替モンスターを選出（セッションにまだ入っていないアクティブモンスターから）
+    scheduled = {(e["field"], e["monster"]) for e in data["field_state"]["session_encounters"]}
+    active_monsters = []
+    active_weights = []
+    for field_name, monsters in data["field_tasks"].items():
+        for monster_obj in monsters:
+            if monster_obj.get("active", 1) == 1:
+                key = (field_name, monster_obj["monster"])
+                if key not in scheduled:
+                    active_monsters.append({"field": field_name, "monster": monster_obj["monster"]})
+                    w = monster_obj.get("weight", 0)
+                    active_weights.append(max(1, 3 + w))
 
     print()
     print("=" * 48)
@@ -275,14 +285,30 @@ def seal():
     print(f"   二軍（active: 0）に移動しました。")
     print()
 
-    remaining = len(data["field_state"]["session_encounters"])
-    if remaining > 0:
-        print(f"   残り {remaining}体")
+    if active_monsters:
+        # 代替モンスターをセッション先頭に挿入して即エンカウント
+        replacement = random.choices(active_monsters, weights=active_weights, k=1)[0]
+        data["field_state"]["session_encounters"].insert(0, replacement)
+        data["field_state"]["current_encounter"] = replacement
+        data["field_state"]["current_category"] = replacement["field"]
+        save_data(data)
+        tprint(f"⚔️  代わりに {replacement['monster']} が現れた！")
+        tprint(f"📍 {replacement['field']}")
+        remaining = len(data["field_state"]["session_encounters"])
+        print(f"📊 残り {remaining}体")
         print()
     else:
+        # セッション外の代替モンスターがいない場合は戦闘終了
+        data["field_state"]["current_encounter"] = None
+        save_data(data)
+        remaining = len(data["field_state"]["session_encounters"])
+        if remaining > 0:
+            print(f"   残り {remaining}体")
+            print()
+        else:
+            print()
+            tprint("🎊 今回の探索は終了しました！")
         print()
-        tprint("🎊 今回の探索は終了しました！")
-    print()
 
 def unseal():
     """封印解除（active=0のモンスターをランダムに復活させて現在のモンスターと入れ替え）"""
