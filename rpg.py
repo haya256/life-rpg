@@ -10,7 +10,7 @@ import random
 from rpg_bgm import bgm
 import rpg_ui
 from rpg_ui import get_current_date, input_with_prefill, show_menu, tprint
-from rpg_data import load_data, save_data, log_adventure, LOG_FILE
+from rpg_data import load_data, save_data, log_adventure, LOG_FILE, SAVE_DIR
 
 # ==================== フィールド探索 ====================
 
@@ -369,6 +369,249 @@ def unseal():
     print()
     print(f"💡 {current_encounter['monster']} は後回しになりました。")
     print()
+
+# ==================== 修行の旅 ====================
+
+def generate_training_journey():
+    """修行の旅：テキストファイルを生成して出発"""
+    from datetime import datetime
+    data = load_data()
+
+    # アクティブなモンスターを収集
+    monsters = []
+    for field_name, monster_list in data["field_tasks"].items():
+        for monster_obj in monster_list:
+            if monster_obj.get("active", 1) == 1:
+                monsters.append({
+                    "field": field_name,
+                    "name": monster_obj["monster"],
+                    "gold": monster_obj.get("gold", 1),
+                })
+
+    if not monsters:
+        print("❌ アクティブなモンスターがいません。")
+        return
+
+    now = datetime.now()
+    timestamp = now.strftime("%Y%m%d_%H%M%S")
+    departure = now.strftime("%Y-%m-%d %H:%M")
+    filename = f"修行の書_{timestamp}.txt"
+    filepath = SAVE_DIR / filename
+
+    lines = []
+    lines.append("# 修行の書")
+    lines.append(f"# 出発: {departure}")
+    lines.append("")
+    lines.append("## モンスター一覧")
+    for i, m in enumerate(monsters, 1):
+        lines.append(f"{i}. [{m['field']}] {m['name']} (10 EXP, {m['gold']} G)")
+    lines.append("")
+    lines.append("## 修行記録")
+    lines.append("# 倒したモンスターを以下のフォーマットで1行ずつ記入してください")
+    lines.append("# フォーマット: 日時 | モンスター番号 | メモ（省略可）")
+    lines.append(f"# 例: {departure} | 1 | 片付けた")
+    lines.append(f"# 例: {departure} | 3")
+    lines.append("")
+
+    filepath.write_text("\n".join(lines), encoding="utf-8")
+
+    print()
+    print("=" * 48)
+    tprint("🏔️  修行の旅に出発！")
+    print("=" * 48)
+    print()
+    tprint(f"📜 修行の書を作成しました: {filepath}")
+    tprint(f"📝 モンスター数: {len(monsters)}体")
+    print()
+    tprint("テキストファイルに修行記録を書き込んで、")
+    tprint("帰還時に読み込んでください。")
+    print()
+
+
+def import_training_journey(filepath):
+    """修行の旅：テキストファイルを読み込んで結果を反映"""
+    import re
+    content = filepath.read_text(encoding="utf-8")
+
+    # モンスター一覧をパース
+    monster_map = {}
+    in_monster_section = False
+    for line in content.split("\n"):
+        if line.strip() == "## モンスター一覧":
+            in_monster_section = True
+            continue
+        if line.strip().startswith("## ") and in_monster_section:
+            break
+        if in_monster_section:
+            m = re.match(r"^(\d+)\.\s+\[(.+?)\]\s+(.+?)\s+\((\d+)\s+EXP,\s+(\d+)\s+G\)", line.strip())
+            if m:
+                num = int(m.group(1))
+                field = m.group(2)
+                name = m.group(3)
+                gold = int(m.group(5))
+                monster_map[num] = {"field": field, "name": name, "gold": gold}
+
+    # 修行記録をパース
+    records = []
+    in_record_section = False
+    for line in content.split("\n"):
+        if line.strip() == "## 修行記録":
+            in_record_section = True
+            continue
+        if in_record_section:
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = [p.strip() for p in line.split("|")]
+            if len(parts) >= 2:
+                datetime_str = parts[0]
+                try:
+                    monster_num = int(parts[1])
+                except ValueError:
+                    continue
+                memo = parts[2] if len(parts) >= 3 else ""
+                if monster_num in monster_map:
+                    records.append({
+                        "datetime": datetime_str,
+                        "monster_num": monster_num,
+                        "memo": memo,
+                    })
+
+    if not records:
+        print()
+        print("❌ 修行記録が見つかりませんでした。")
+        print()
+        return False
+
+    # 結果を反映
+    data = load_data()
+    total_exp = 0
+    total_gold = 0
+
+    for rec in records:
+        monster = monster_map[rec["monster_num"]]
+        exp_gain = 10
+        gold_gain = monster["gold"]
+
+        data["hero"]["exp"] += exp_gain
+        data["hero"]["gold"] = data["hero"].get("gold", 0) + gold_gain
+        data["hero"]["total_battles"] += 1
+        data["hero"]["total_victories"] += 1
+
+        total_exp += exp_gain
+        total_gold += gold_gain
+
+        # 日時をパースしてログに記録
+        date_str = None
+        time_str = None
+        dt_parts = rec["datetime"].split()
+        if len(dt_parts) >= 1:
+            date_str = dt_parts[0]
+        if len(dt_parts) >= 2:
+            time_str = dt_parts[1]
+
+        log_message = monster["name"]
+        if rec["memo"]:
+            log_message += f"（{rec['memo']}）"
+
+        log_adventure(
+            monster["field"],
+            log_message,
+            "✓",
+            date=date_str,
+            time=time_str,
+        )
+
+    # レベルアップチェック
+    old_level = data["hero"]["level"]
+    new_level = 1 + (data["hero"]["exp"] // 100)
+    data["hero"]["level"] = new_level
+
+    save_data(data)
+
+    # 結果サマリー表示
+    print()
+    print("=" * 48)
+    tprint("🏔️  修行の旅から帰還！")
+    print("=" * 48)
+    print()
+    tprint(f"⚔️  討伐数: {len(records)}体")
+    tprint(f"✨ 獲得EXP: +{total_exp} (総EXP: {data['hero']['exp']})")
+    tprint(f"💰 獲得GOLD: +{total_gold} (所持GOLD: {data['hero']['gold']})")
+
+    if new_level > old_level:
+        print()
+        tprint("🎊" * 20, delay=0.005)
+        tprint(f"🌟 レベルアップ！ Lv.{old_level} → Lv.{new_level}")
+        tprint("🎊" * 20, delay=0.005)
+
+    print()
+
+    # 処理済みファイルをリネーム
+    done_path = filepath.with_name(filepath.stem + "_済.txt")
+    filepath.rename(done_path)
+    tprint(f"📜 修行の書を処理済みにしました: {done_path.name}")
+    print()
+
+    return True
+
+
+def interactive_training_journey():
+    """修行の旅のサブメニュー"""
+    while True:
+        print()
+        print("=" * 48)
+        tprint("🏔️  修行の旅")
+        print("=" * 48)
+        print()
+
+        choice = show_menu([
+            ("depart", "🚶 出発（修行の書を作成）"),
+            ("return", "🏠 帰還（修行の書を読み込み）"),
+            ("back", "🔙 戻る"),
+        ])
+
+        if choice == "depart":
+            generate_training_journey()
+            input("\n[Enter] で続ける...")
+        elif choice == "return":
+            # 未処理の修行の書を検索
+            files = sorted(SAVE_DIR.glob("修行の書_*.txt"))
+            # _済.txt を除外
+            files = [f for f in files if not f.stem.endswith("_済")]
+
+            if not files:
+                print()
+                print("❌ 未処理の修行の書がありません。")
+                print()
+                input("[Enter] で続ける...")
+                continue
+
+            print()
+            print("📜 修行の書一覧:")
+            print()
+            menu_items = []
+            for i, f in enumerate(files):
+                menu_items.append((str(i), f.name))
+            menu_items.append(("back", "🔙 戻る"))
+
+            file_choice = show_menu(menu_items)
+
+            if file_choice == "back" or file_choice is None:
+                continue
+
+            try:
+                idx = int(file_choice)
+                selected_file = files[idx]
+            except (ValueError, IndexError):
+                print("❌ 無効な選択です。")
+                continue
+
+            import_training_journey(selected_file)
+            input("\n[Enter] で続ける...")
+        elif choice == "back" or choice is None:
+            break
+
 
 def create_monster():
     """神モード専用：新しいモンスターを創造する"""
@@ -1292,6 +1535,7 @@ def interactive():
         choice = show_menu([
             ("explore", "🌍 フィールド探索（モンスター討伐で経験値稼ぎ）"),
             ("quest", "📜 クエスト（大きな目標に挑戦）"),
+            ("training", "🏔️  修行の旅（オフラインで経験値稼ぎ）"),
             ("chest", "📦 チェスト管理（物の収納場所を管理）"),
             ("status", "📊 ステータス確認"),
             ("log", "📖 冒険の記録"),
@@ -1306,6 +1550,8 @@ def interactive():
             interactive_field_explore()
         elif choice == "quest":
             interactive_quest()
+        elif choice == "training":
+            interactive_training_journey()
         elif choice == "chest":
             interactive_chest()
         elif choice == "status":

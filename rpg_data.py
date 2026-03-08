@@ -63,13 +63,15 @@ def save_data(data):
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-def log_adventure(category, message, symbol="⚔️"):
+def log_adventure(category, message, symbol="⚔️", date=None, time=None):
     """冒険の記録をログの末尾に追記"""
     if not LOG_FILE.exists():
         LOG_FILE.write_text("# 冒険の記録\n", encoding='utf-8')
 
-    date = get_current_date()
-    time = get_current_time()
+    if date is None:
+        date = get_current_date()
+    if time is None:
+        time = get_current_time()
     entry = f"{date} {time} [{category}] {message} {symbol}\n"
 
     with open(LOG_FILE, 'a', encoding='utf-8') as f:
