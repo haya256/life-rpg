@@ -236,8 +236,11 @@ def show_menu(items, god_items=None):
         if god_items and god_mode:
             all_items.extend(god_items)
 
-        for i, (key, label) in enumerate(all_items, 1):
-            print(f"{i}. {label}")
+        # 1-9, a-z のキーを生成
+        menu_keys = [str(i) for i in range(1, 10)] + [chr(c) for c in range(ord('a'), ord('z') + 1)]
+
+        for i, (key, label) in enumerate(all_items):
+            print(f"{menu_keys[i]}. {label}")
         print()
 
         n = len(all_items)
@@ -260,8 +263,9 @@ def show_menu(items, god_items=None):
         if ch in ('\x1b', '\r', '\n'):  # Esc / Enter
             return None
 
-        if ch.isdigit() and 1 <= int(ch) <= n:
-            return all_items[int(ch) - 1][0]
+        ch_lower = ch.lower()
+        if ch_lower in menu_keys[:n]:
+            return all_items[menu_keys.index(ch_lower)][0]
         # 無効キーは無視してループ（再表示）
 
 
