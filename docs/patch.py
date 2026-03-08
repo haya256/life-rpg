@@ -127,3 +127,16 @@ def log_adventure(category, message, symbol='⚔️'):
         'key':   _LS_LOG_KEY,
         'value': _log_cache,
     })
+
+
+# ===== rpg_ui / rpg_data モジュール内の関数もパッチ =====
+# モジュール分割後、show_menu() 等が rpg_ui モジュールのスコープで
+# getch/animated_getch を呼ぶため、モジュール属性も上書きする必要がある
+import rpg_ui
+import rpg_data
+
+rpg_ui.getch = getch
+rpg_ui.animated_getch = animated_getch
+rpg_data.save_data = save_data
+rpg_data.load_data = load_data
+rpg_data.log_adventure = log_adventure

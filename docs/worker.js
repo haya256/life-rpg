@@ -54,7 +54,7 @@ async function runGame() {
   postMessage({ type: 'status', text: '⏳ Pyodide を読み込み中 (初回は少し時間がかかります)...' });
 
   // Pyodide ロードと各ファイル fetch を並列実行
-  const [pyodide, shimCode, patchCode, rpgCode, sampleData] = await Promise.all([
+  const [pyodide, shimCode, patchCode, rpgCode, rpgUiCode, rpgDataCode, sampleData] = await Promise.all([
     loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.27.0/full/' }),
     fetch('./shim.py').then((r) => {
       if (!r.ok) throw new Error(`shim.py の取得に失敗: ${r.status}`);
@@ -68,6 +68,14 @@ async function runGame() {
       if (!r.ok) throw new Error(`rpg.py の取得に失敗: ${r.status}`);
       return r.text();
     }),
+    fetch(`${REPO_RAW}/rpg_ui.py`).then((r) => {
+      if (!r.ok) throw new Error(`rpg_ui.py の取得に失敗: ${r.status}`);
+      return r.text();
+    }),
+    fetch(`${REPO_RAW}/rpg_data.py`).then((r) => {
+      if (!r.ok) throw new Error(`rpg_data.py の取得に失敗: ${r.status}`);
+      return r.text();
+    }),
     fetch(`${REPO_RAW}/sample_data.json`).then((r) => {
       if (!r.ok) throw new Error(`sample_data.json の取得に失敗: ${r.status}`);
       return r.json();
@@ -79,6 +87,11 @@ async function runGame() {
   // sample_data を Python グローバル変数 _SAMPLE_DATA として注入
   // (patch.py の load_data() が初回起動時に参照する)
   pyodide.globals.set('_SAMPLE_DATA', pyodide.toPy(sampleData));
+
+  // rpg_ui.py / rpg_data.py を Pyodide ファイルシステムに配置
+  // → rpg.py の import rpg_ui / import rpg_data が通るようにする
+  pyodide.FS.writeFile('/home/pyodide/rpg_ui.py', rpgUiCode);
+  pyodide.FS.writeFile('/home/pyodide/rpg_data.py', rpgDataCode);
 
   // rpg.py が __file__ から SCRIPT_DIR を解決するために設定
   pyodide.globals.set('__file__', '/home/pyodide/rpg.py');

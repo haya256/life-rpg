@@ -70,6 +70,13 @@ _msvcrt.kbhit = lambda: False
 _msvcrt.getwch = lambda: ''
 sys.modules['msvcrt'] = _msvcrt
 
+_rpg_bgm = ModuleType('rpg_bgm')
+class _DummyBgm:
+    def play(self, *a, **kw): pass
+    def stop(self, *a, **kw): pass
+_rpg_bgm.bgm = _DummyBgm()
+sys.modules['rpg_bgm'] = _rpg_bgm
+
 # ===== ターミナルサイズ（固定値） =====
 shutil.get_terminal_size = lambda fallback=(80, 24): os.terminal_size((80, 24))
 
