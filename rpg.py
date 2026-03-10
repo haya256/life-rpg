@@ -14,6 +14,26 @@ from rpg_data import load_data, save_data, log_adventure, LOG_FILE, SAVE_DIR
 
 # ==================== フィールド探索 ====================
 
+def get_today_defeated_monsters():
+    """今日すでに勝利したモンスター名のセットを返す（ログ末尾から高速スキャン）"""
+    from rpg_data import get_current_date
+    today = get_current_date()
+    defeated = set()
+    if not LOG_FILE.exists():
+        return defeated
+    lines = LOG_FILE.read_text(encoding='utf-8').splitlines()
+    for line in reversed(lines):
+        if not line.startswith(today):
+            if line.startswith("20"):  # 今日以外の日付行に達したら終了
+                break
+        elif line.endswith(" ✓"):
+            # 形式: "DATE TIME [field] monster ✓"
+            bracket_end = line.index("]")
+            monster = line[bracket_end + 2 : -2]  # "] " の後、" ✓" の前
+            defeated.add(monster)
+    return defeated
+
+
 def explore(mode="random", count=5):
     """フィールド探索を開始"""
     data = load_data()
@@ -42,8 +62,24 @@ def explore(mode="random", count=5):
         print("   'rpg add-monster' でモンスターを追加してください。")
         return
 
+    # undefeated_today モード: 今日未討伐のモンスターのみ
+    if mode == "undefeated_today":
+        defeated = get_today_defeated_monsters()
+        undefeated = [(e, w) for e, w in zip(all_encounters, all_weights)
+                      if e["monster"] not in defeated]
+        if not undefeated:
+            print()
+            print("🎉 今日はすべてのモンスターを討伐済みです！")
+            print()
+            return
+        all_encounters = [e for e, _ in undefeated]
+        all_weights = [w for _, w in undefeated]
+        indexed = list(zip(all_encounters, all_weights))
+        indexed.sort(key=lambda x: -(x[1] * random.random()))
+        session_encounters = [e for e, _ in indexed]
+
     # セッション開始（重み付きサンプリング）
-    if mode == "random":
+    elif mode == "random":
         # 重み付きで重複なしサンプリング
         pool = list(range(len(all_encounters)))
         weights = all_weights.copy()
@@ -1612,6 +1648,7 @@ def interactive_field_explore():
             ("r5", "ランダムに5体"),
             ("r10", "ランダムに10体"),
             ("all", "全てのモンスター"),
+            ("undefeated", "今日まだ勝利していないモンスター"),
             ("cancel", "キャンセル"),
         ])
 
@@ -1623,6 +1660,8 @@ def interactive_field_explore():
             explore("random", 10)
         elif choice == "all":
             explore("all")
+        elif choice == "undefeated":
+            explore("undefeated_today")
         else:
             return
 
