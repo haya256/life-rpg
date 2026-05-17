@@ -1536,21 +1536,34 @@ def show_log():
             bar = "★" * min(count, 10)
             print(f"  {bar} ×{count}  {monster}")
 
-    # --- 3. 統計情報 ---
+    # --- 3. 未討伐モンスター ---
     data = load_data()
     active_monsters = []
     for monsters in data["field_tasks"].values():
         active_monsters.extend(m["monster"] for m in monsters if m.get("active", 1) == 1)
 
-    total_active = len(active_monsters)
     defeated_today = set(monster_counts.keys())
+    undefeated = [m for m in active_monsters if m not in defeated_today]
+
+    print()
+    print("-" * 48)
+    print("💤 未討伐モンスター")
+    print()
+    if not undefeated:
+        print("   全モンスター討伐済み！完璧な一日！")
+    else:
+        for monster in undefeated:
+            print(f"  ・{monster}")
+
+    # --- 4. 統計情報 ---
+    total_active = len(active_monsters)
     covered = sum(1 for m in active_monsters if m in defeated_today)
     coverage = covered / total_active * 100 if total_active > 0 else 0
     total_victories = sum(monster_counts.values())
 
     print()
     print("-" * 48)
-    print("📊 本日の統計")
+    print("📊 統計")
     print()
     print(f"  討伐数（延べ）  : {total_victories} 回")
     print(f"  討伐種数        : {covered} / {total_active} 体")
