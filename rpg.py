@@ -12,6 +12,8 @@ import rpg_ui
 from rpg_ui import get_current_date, input_with_prefill, show_menu, tprint
 from rpg_data import load_data, save_data, log_adventure, LOG_FILE, SAVE_DIR
 
+LOG_HISTORY_LINES = 100  # 未討伐履歴スキャン行数
+
 # ==================== フィールド探索 ====================
 
 def get_today_defeated_monsters():
@@ -32,6 +34,31 @@ def get_today_defeated_monsters():
             monster = line[bracket_end + 2 : -2]  # "] " の後、" ✓" の前
             defeated.add(monster)
     return defeated
+
+
+def get_monster_history(n_lines=LOG_HISTORY_LINES):
+    """ログ末尾n行からモンスターごとの討伐日セットと全日付セットを返す。"""
+    if not LOG_FILE.exists():
+        return {}, set()
+    lines = LOG_FILE.read_text(encoding='utf-8').splitlines()
+    recent = lines[-n_lines:]
+    history = {}
+    all_dates = set()
+    for line in recent:
+        if not line.endswith(" ✓"):
+            continue
+        parts = line.split(" ", 1)
+        if not parts or not parts[0].startswith("20"):
+            continue
+        date = parts[0]
+        try:
+            bracket_end = line.index("]")
+            monster = line[bracket_end + 2:-2]
+        except ValueError:
+            continue
+        all_dates.add(date)
+        history.setdefault(monster, set()).add(date)
+    return history, all_dates
 
 
 def explore(mode="random", count=5):
@@ -1549,8 +1576,28 @@ def show_log():
     if not undefeated:
         print("   全モンスター討伐済み！完璧な一日！")
     else:
-        for monster in undefeated:
-            print(f"  ・{monster}")
+        from datetime import date as dt_date
+        history, all_dates = get_monster_history()
+        total_days = len(all_dates)
+        today_dt = dt_date.fromisoformat(today)
+
+        def days_since_last(monster):
+            defeated_dates = history.get(monster, set())
+            if not defeated_dates:
+                return float('inf')
+            last_dt = dt_date.fromisoformat(max(defeated_dates))
+            return (today_dt - last_dt).days
+
+        undefeated_sorted = sorted(undefeated, key=days_since_last)
+        for monster in undefeated_sorted:
+            defeated_dates = history.get(monster, set())
+            if defeated_dates:
+                last_dt = dt_date.fromisoformat(max(defeated_dates))
+                days_ago = (today_dt - last_dt).days
+                suffix = f"最終: {days_ago}日前"
+            else:
+                suffix = "履歴なし"
+            print(f"  ・{monster}  ({suffix})")
 
     # --- 4. 統計情報 ---
     total_active = len(active_monsters)
