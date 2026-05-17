@@ -22,8 +22,25 @@ if _BGM_AVAILABLE:
             self._current = None
             self._channel = None
             self._ready = False
+            self._muted = False
             # 音の生成はバックグラウンドスレッドで（起動をブロックしない）
             _threading.Thread(target=self._build_all, daemon=True).start()
+
+        @property
+        def muted(self):
+            return self._muted
+
+        def toggle_mute(self):
+            self._muted = not self._muted
+            if self._muted:
+                if self._channel:
+                    try:
+                        self._channel.stop()
+                    except Exception:
+                        pass
+            else:
+                if self._ready and self._current:
+                    self._do_play(self._current)
 
         def _note(self, freq, duration):
             """指定周波数・長さのサイン波サンプル列を生成（float32）"""
@@ -133,6 +150,8 @@ if _BGM_AVAILABLE:
                     except Exception:
                         pass
                 return
+            if self._muted:
+                return
             if self._ready:
                 self._do_play(scene)
             # 未完成なら _build_all() 完了時に自動再生される
@@ -145,7 +164,9 @@ if _BGM_AVAILABLE:
 else:
     class _NullBGM:
         """BGM 非対応環境用のダミー（何もしない）"""
+        muted = False
         def play(self, scene): pass
         def stop(self): pass
+        def toggle_mute(self): pass
 
     bgm = _NullBGM()

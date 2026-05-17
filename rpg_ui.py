@@ -7,6 +7,8 @@ import sys
 import time
 import unicodedata
 
+from rpg_bgm import bgm
+
 _IS_WINDOWS = sys.platform == 'win32'
 
 if _IS_WINDOWS:
@@ -47,8 +49,8 @@ def getch():
     return ch
 
 
-def animated_getch():
-    """アニメーション付き1キー入力待ち（メニュー用）"""
+def _animated_getch_raw():
+    """アニメーション付き1キー入力待ち（内部実装）"""
     frames = ["▶   ", "▶.  ", "▶.. ", "▶..."]
     frame_idx = 0
 
@@ -97,6 +99,18 @@ def animated_getch():
     if ch == '\x03':  # Ctrl+C
         raise KeyboardInterrupt
     return ch
+
+
+def animated_getch():
+    """アニメーション付き1キー入力待ち（メニュー用）。m キーでBGMミュートトグル。"""
+    while True:
+        ch = _animated_getch_raw()
+        if ch == 'm':
+            bgm.toggle_mute()
+            label = "ミュート" if bgm.muted else "ミュート解除"
+            print(f"\r🔇 BGM {label}")
+            continue
+        return ch
 
 
 def input_with_prefill(prompt, prefill=""):
