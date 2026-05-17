@@ -1698,6 +1698,7 @@ def interactive_field_explore():
             choice = show_menu([
                 ("victory", "✅ 完了！（勝利）"),
                 ("flee", "🏃 逃げる（スキップ）"),
+                ("quest", "📜 クエスト確認"),
                 ("return", "🏠 街に戻る（探索中断）"),
             ], god_items=[
                 ("rename", "✏️  このモンスターの名前を変更する"),
@@ -1720,6 +1721,8 @@ def interactive_field_explore():
             elif choice == "unseal":
                 unseal()
                 input("\n[Enter] で続ける...")
+            elif choice == "quest":
+                interactive_quest()
             elif choice == "return":
                 return_to_town()
                 input("\n[Enter] で続ける...")

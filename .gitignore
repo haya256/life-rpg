@@ -23,3 +23,12 @@ play.command
 
 # ゲームプレイログ・データ（プログラム開発と分離、自動tracking対象外）
 savedata/
+
+# PMO管理ディレクトリ（非公開）
+pmo/
+
+# 設定ファイル（非公開）
+config/
+
+# ユーザーデータ（非公開）
+data/
