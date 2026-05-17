@@ -1483,18 +1483,80 @@ def show_status():
     print()
 
 def show_log():
-    """冒険の記録を表示"""
-    if not LOG_FILE.exists():
-        print()
-        print("📖 まだ冒険の記録がありません。")
-        print()
-        return
+    """冒険の記録を表示（今日分のみ）"""
+    from collections import Counter
 
-    with open(LOG_FILE, 'r', encoding='utf-8') as f:
-        content = f.read()
+    today = get_current_date()
 
     print()
-    print(content)
+    print("=" * 48)
+    print(f"📖 冒険の記録 — {today}")
+    print("=" * 48)
+
+    # 今日のログ行を抽出
+    today_lines = []
+    if LOG_FILE.exists():
+        for line in LOG_FILE.read_text(encoding='utf-8').splitlines():
+            if line.startswith(today):
+                today_lines.append(line)
+
+    # --- 1. 今日のログ全件表示 ---
+    print()
+    if not today_lines:
+        print("   今日はまだ冒険していません。")
+    else:
+        for line in today_lines:
+            print(f"  {line}")
+
+    # --- 2. 討伐モンスター（回数順） ---
+    monster_counts = Counter()
+    for line in today_lines:
+        if not line.endswith("✓"):
+            continue
+        # フォーマット: "date time [field] monster_name ✓"
+        bracket_end = line.find("] ")
+        if bracket_end == -1:
+            continue
+        monster_name = line[bracket_end + 2:].rstrip(" ✓").rstrip()
+        # クエストログは除外
+        bracket_start = line.find("[")
+        category = line[bracket_start + 1:bracket_end]
+        if category.startswith("📜"):
+            continue
+        monster_counts[monster_name] += 1
+
+    print()
+    print("-" * 48)
+    print("⚔️  討伐モンスター（回数順）")
+    print()
+    if not monster_counts:
+        print("   今日はまだ討伐していません。")
+    else:
+        for monster, count in monster_counts.most_common():
+            bar = "★" * min(count, 10)
+            print(f"  {bar} ×{count}  {monster}")
+
+    # --- 3. 統計情報 ---
+    data = load_data()
+    active_monsters = []
+    for monsters in data["field_tasks"].values():
+        active_monsters.extend(m["monster"] for m in monsters if m.get("active", 1) == 1)
+
+    total_active = len(active_monsters)
+    defeated_today = set(monster_counts.keys())
+    covered = sum(1 for m in active_monsters if m in defeated_today)
+    coverage = covered / total_active * 100 if total_active > 0 else 0
+    total_victories = sum(monster_counts.values())
+
+    print()
+    print("-" * 48)
+    print("📊 本日の統計")
+    print()
+    print(f"  討伐数（延べ）  : {total_victories} 回")
+    print(f"  討伐種数        : {covered} / {total_active} 体")
+    print(f"  カバー率        : {coverage:.1f}%")
+    print()
+    input("[Enter] で続ける...")
 
 # ==================== モンスター図鑑 ====================
 
