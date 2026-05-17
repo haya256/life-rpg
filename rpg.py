@@ -1022,6 +1022,25 @@ def accept_quest(title):
     print(f"次は: rpg add-checkpoint {quest_id} \"最初のチェックポイント\"")
     print()
 
+def find_quest_map(quest_id):
+    """クエストに紐づく地図ファイルを返す（なければ None）"""
+    maps_dir = SAVE_DIR / "maps"
+    matches = list(maps_dir.glob(f"epic_{quest_id}_*.md"))
+    return matches[0] if matches else None
+
+def show_quest_map(quest_id):
+    """クエストの宝の地図を表示"""
+    map_file = find_quest_map(quest_id)
+    if not map_file:
+        print("❌ このクエストには宝の地図がありません。")
+        return
+    print()
+    print("=" * 48)
+    print(f"🗺️  宝の地図: {map_file.name}")
+    print("=" * 48)
+    print()
+    print(map_file.read_text(encoding="utf-8"))
+
 def show_quest(quest_id):
     """クエストの詳細を表示"""
     data = load_data()
@@ -1051,6 +1070,9 @@ def show_quest(quest_id):
         print(f"ステータス: ✅ 完了済み")
     else:
         print(f"ステータス: 📝 進行中")
+
+    if find_quest_map(quest_id):
+        print(f"🗺️  宝の地図: あり")
 
     print()
     print("チェックポイント一覧:")
@@ -2033,11 +2055,14 @@ def interactive_quest():
                     break
 
                 print()
-                action = show_menu([
+                menu_items = [
                     ("done", "✅ 現在のチェックポイントを完了"),
                     ("add", "➕ 新しいチェックポイントを追加"),
-                    ("back", "⬅️  戻る"),
-                ])
+                ]
+                if find_quest_map(quest_id):
+                    menu_items.append(("map", "🗺️  宝の地図を見る"))
+                menu_items.append(("back", "⬅️  戻る"))
+                action = show_menu(menu_items)
 
                 if action == "done":
                     advance_quest(quest_id)
@@ -2056,6 +2081,9 @@ def interactive_quest():
                     if mission:
                         add_checkpoint(quest_id, mission)
                         input("\n[Enter] で続ける...")
+                elif action == "map":
+                    show_quest_map(quest_id)
+                    input("\n[Enter] で続ける...")
                 elif action == "back":
                     break
                 else:
