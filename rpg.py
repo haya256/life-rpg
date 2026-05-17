@@ -952,13 +952,10 @@ def list_quests():
         print()
         print(f"{status_icon} クエスト {quest['id']}: {quest['title']}")
         print(f"   進捗: {completed_checkpoints}/{total_checkpoints} チェックポイント")
-        print(f"   作成日: {quest['created']}")
 
         if quest["status"] == "completed":
             print(f"   ✅ 完了済み！")
 
-    print()
-    print("詳細を見る: rpg show <id>")
     print()
 
 def accept_quest(title):
