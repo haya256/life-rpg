@@ -1616,6 +1616,88 @@ def show_monster_encyclopedia():
     input("[Enter] で続ける...")
 
 
+def god_nominate_monster():
+    """神モード専用：モンスターを指名して即座に討伐する"""
+    data = load_data()
+
+    # 全フィールドのモンスターをフラットなリストに収集（封印中も含む）
+    all_monsters = []
+    for field_name, monsters in data["field_tasks"].items():
+        for m in monsters:
+            all_monsters.append((field_name, m))
+
+    if not all_monsters:
+        print()
+        print("   モンスターがまだいません。")
+        print()
+        input("[Enter] で続ける...")
+        return
+
+    print()
+    print("=" * 48)
+    print("🎯 モンスター指名討伐")
+    print("=" * 48)
+    print()
+
+    for i, (field_name, m) in enumerate(all_monsters, 1):
+        active = m.get("active", 1)
+        status = "✅" if active else "🔒"
+        gold = m.get("gold", 1)
+        print(f"  {i:2}. {status} [{field_name}] {m['monster']}  💰{gold}G")
+
+    print()
+    try:
+        raw = input("討伐するモンスターの番号を入力（Enterでキャンセル）: ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return
+
+    if not raw:
+        return
+
+    if not raw.isdigit() or not (1 <= int(raw) <= len(all_monsters)):
+        print("❌ 無効な番号です。")
+        input("[Enter] で続ける...")
+        return
+
+    field_name, monster_obj = all_monsters[int(raw) - 1]
+    monster_name = monster_obj["monster"]
+    gold_gain = monster_obj.get("gold", 1)
+    exp_gain = 10
+
+    # 統計・EXP・ゴールド更新
+    data["hero"]["total_battles"] += 1
+    data["hero"]["total_victories"] += 1
+    data["hero"]["exp"] += exp_gain
+    data["hero"]["gold"] = data["hero"].get("gold", 0) + gold_gain
+
+    old_level = data["hero"]["level"]
+    new_level = 1 + (data["hero"]["exp"] // 100)
+    data["hero"]["level"] = new_level
+
+    save_data(data)
+
+    # ログ記録
+    log_adventure(field_name, monster_name, "✓")
+
+    # 結果表示
+    print()
+    print("=" * 48)
+    tprint("⚡ 神の裁き！")
+    print("=" * 48)
+    tprint(f"👹 {monster_name} を討伐した！")
+    tprint(f"✨ EXP +{exp_gain} (総EXP: {data['hero']['exp']})")
+    tprint(f"💰 GOLD +{gold_gain} (所持GOLD: {data['hero']['gold']})")
+
+    if new_level > old_level:
+        print()
+        tprint("🎊" * 20, delay=0.005)
+        tprint(f"🌟 レベルアップ！ Lv.{old_level} → Lv.{new_level}")
+        tprint("🎊" * 20, delay=0.005)
+
+    print()
+    input("[Enter] で続ける...")
+
+
 # ==================== 対話モード ====================
 
 def interactive():
@@ -1650,6 +1732,7 @@ def interactive():
             ("quit", "🚪 終了"),
         ], god_items=[
             ("encyclopedia", "📖 モンスター図鑑"),
+            ("nominate", "🎯 モンスター指名討伐"),
             ("create", "✨ モンスターを創造する"),
             ("unleash", "🌑 闇の時代の再来（全モンスター解放）"),
         ])
@@ -1677,6 +1760,8 @@ def interactive():
             break
         elif choice == "encyclopedia":
             show_monster_encyclopedia()
+        elif choice == "nominate":
+            god_nominate_monster()
         elif choice == "create":
             create_monster()
         elif choice == "unleash":
