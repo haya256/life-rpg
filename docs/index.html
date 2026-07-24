@@ -109,6 +109,15 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    #overlay.blocked .spinner { display: none; }
+    #overlay.blocked .status-msg {
+      color: #f87171;
+      font-size: 0.95rem;
+      max-width: 280px;
+      line-height: 1.6;
+      white-space: pre-line;
+    }
+
     /* ── SW 非対応の警告 ── */
     #sw-warning {
       display: none;
@@ -215,6 +224,20 @@ function setStatus(msg) {
   document.getElementById('status-msg').textContent = msg;
 }
 
+// スマホ（タッチ主体の小画面デバイス）判定
+// xterm.js + SharedArrayBuffer/Worker 構成がスマホブラウザでは正常に動作しないため、
+// 起動前に弾いて案内メッセージを出す。
+function isMobileDevice() {
+  const uaMatch = /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
+  const coarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  return uaMatch || coarsePointer;
+}
+
+function showMobileBlockedMessage() {
+  document.getElementById('overlay').classList.add('blocked');
+  setStatus('📵 スマホでは起動できません。\nPCのブラウザでお試しください。');
+}
+
 function hideOverlay() {
   const ol = document.getElementById('overlay');
   ol.classList.add('hidden');
@@ -309,6 +332,11 @@ function startApp() {
 // 5. Service Worker 登録 → COOP/COEP ヘッダー付与 → 再ロード
 // ============================================================
 (async function bootstrap() {
+  if (isMobileDevice()) {
+    showMobileBlockedMessage();
+    return;
+  }
+
   if (!('serviceWorker' in navigator)) {
     // SW 非対応ブラウザ: そのまま試みる（GitHub Pages 以外の環境など）
     startApp();
