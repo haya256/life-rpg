@@ -1978,6 +1978,7 @@ def interactive_field_explore():
             main_items.append(("return", "🏠 街に戻る（探索終了）"))
             choice = show_menu(main_items, god_items=[
                 ("set_rate", "⚖️  直前のモンスターの出現率を変更する"),
+                ("nominate", "🎯 モンスター指名討伐"),
             ])
 
             if choice == "battle":
@@ -1992,6 +1993,8 @@ def interactive_field_explore():
                     input("\n[Enter] で続ける...")
                 else:
                     print("❌ 直前のモンスターがありません。")
+            elif choice == "nominate":
+                god_nominate_monster()
             else:
                 print("❌ 無効な選択です。")
 
