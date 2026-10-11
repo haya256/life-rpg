@@ -971,17 +971,29 @@ def list_quests():
     print("📜 クエスト一覧")
     print("=" * 48)
 
-    for quest in data["quests"]:
+    active_quests = [q for q in data["quests"] if q["status"] != "completed"]
+    completed_quests = [q for q in data["quests"] if q["status"] == "completed"]
+
+    print()
+    print("📝 進行中")
+    if not active_quests:
+        print()
+        print("   進行中のクエストはありません。")
+    for quest in active_quests:
         total_checkpoints = len(quest["checkpoints"])
         completed_checkpoints = sum(1 for m in quest["checkpoints"] if m["completed"])
-        status_icon = "✅" if quest["status"] == "completed" else "📝"
 
         print()
-        print(f"{status_icon} クエスト {quest['id']}: {quest['title']}")
+        print(f"📝 クエスト {quest['id']}: {quest['title']}")
         print(f"   進捗: {completed_checkpoints}/{total_checkpoints} チェックポイント")
 
-        if quest["status"] == "completed":
-            print(f"   ✅ 完了済み！")
+    if completed_quests:
+        print()
+        print("-" * 48)
+        print("✅ 完了済み")
+        print()
+        for quest in completed_quests:
+            print(f"✅ クエスト {quest['id']}: {quest['title']}")
 
     print()
 
